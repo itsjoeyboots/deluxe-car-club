@@ -1,9 +1,12 @@
 import { View, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import {
+  Avatar,
   Button,
   Card,
   Divider,
   PointsChip,
+  ProgressBar,
   ScarcityCounter,
   Screen,
   Text,
@@ -11,10 +14,17 @@ import {
   type Tier,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
+import { useMyCars } from '@/hooks/use-my-cars';
 import { MEMBERSHIP } from '@/lib/membership';
+import {
+  profileChecklist,
+  profileCompletion,
+} from '@/lib/profile-completeness';
+import { colors } from '@/lib/theme';
 
 export default function HomeScreen() {
   const { profile, session } = useAuth();
+  const { cars } = useMyCars();
 
   const displayName =
     profile?.full_name?.split(' ')[0] ??
@@ -28,19 +38,74 @@ export default function HomeScreen() {
   );
   const points = profile?.points_balance ?? 0;
 
+  const checklist = profileChecklist(
+    profile,
+    cars.some((c) => c.is_primary),
+  );
+  const completion = profileCompletion(checklist);
+  const firstIncomplete = checklist.find((i) => i.required && !i.done);
+  const finishHref =
+    firstIncomplete?.key === 'primary_car' ? '/cars/new' : '/profile/edit';
+
   return (
     <Screen contentContainerStyle={{ paddingTop: 24, gap: 20 }}>
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text variant="eyebrow" tone="terracotta">
-            Desert Social Club
-          </Text>
-          <Text variant="display" style={{ marginTop: 4 }}>
-            Hey {displayName}.
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+          <Avatar
+            url={profile?.profile_photo_url}
+            name={profile?.full_name}
+            size="md"
+          />
+          <View style={{ flex: 1 }}>
+            <Text variant="eyebrow" tone="terracotta">
+              Desert Social Club
+            </Text>
+            <Text variant="display" style={{ marginTop: 2 }}>
+              Hey {displayName}.
+            </Text>
+          </View>
         </View>
         <TierBadge tier={tier} />
       </View>
+
+      {!completion.isComplete ? (
+        <Card variant="raised" style={{ borderLeftWidth: 4, borderLeftColor: colors.gold }}>
+          <Text variant="eyebrow" style={{ color: colors.gold }}>
+            Finish your profile
+          </Text>
+          <Text variant="h2" style={{ marginTop: 4 }}>
+            {Math.round(completion.pctRequired * 100)}% complete
+          </Text>
+          <View style={{ marginTop: 10 }}>
+            <ProgressBar
+              value={completion.pctRequired}
+              max={1}
+              tone="gold"
+            />
+          </View>
+          <View style={{ marginTop: 12, gap: 4 }}>
+            {checklist
+              .filter((i) => !i.done && i.required)
+              .slice(0, 3)
+              .map((item) => (
+                <Text key={item.key} variant="small" tone="secondary">
+                  · {item.label}
+                </Text>
+              ))}
+          </View>
+          <Button
+            label={
+              firstIncomplete?.key === 'primary_car'
+                ? 'Add Your Car'
+                : 'Finish Setup'
+            }
+            size="md"
+            fullWidth
+            style={{ marginTop: 14 }}
+            onPress={() => router.push(finishHref)}
+          />
+        </Card>
+      ) : null}
 
       <Card variant="raised">
         <View style={styles.spaceBetween}>

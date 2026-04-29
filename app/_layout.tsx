@@ -47,6 +47,26 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="profile/edit"
+            options={{
+              headerShown: true,
+              title: 'Edit Profile',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="cars/new"
+            options={{
+              headerShown: true,
+              title: 'Add a Car',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="cars/[id]"
+            options={{ headerShown: true, title: 'Edit Car' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

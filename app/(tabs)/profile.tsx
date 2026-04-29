@@ -1,7 +1,10 @@
-import { View, Alert } from 'react-native';
+import { Alert, View } from 'react-native';
+import { router } from 'expo-router';
 import {
+  Avatar,
   Button,
   Card,
+  CarRow,
   Divider,
   PointsChip,
   Screen,
@@ -10,9 +13,12 @@ import {
   type Tier,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
+import { useMyCars } from '@/hooks/use-my-cars';
+import { colors } from '@/lib/theme';
 
 export default function ProfileScreen() {
   const { profile, session, signOut } = useAuth();
+  const { cars, loading: carsLoading } = useMyCars();
 
   const tier: Tier = mapTier(profile?.status, profile?.tier, profile?.role);
   const fullName = profile?.full_name ?? '—';
@@ -28,13 +34,22 @@ export default function ProfileScreen() {
 
   return (
     <Screen contentContainerStyle={{ paddingTop: 24, gap: 18 }}>
-      <View>
-        <Text variant="eyebrow" tone="terracotta">
-          Member Card
-        </Text>
-        <Text variant="display" style={{ marginTop: 4 }}>
-          {fullName}
-        </Text>
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+      >
+        <Avatar
+          url={profile?.profile_photo_url}
+          name={profile?.full_name}
+          size="lg"
+        />
+        <View style={{ flex: 1 }}>
+          <Text variant="eyebrow" tone="terracotta">
+            Member Card
+          </Text>
+          <Text variant="h1" numberOfLines={1} style={{ marginTop: 2 }}>
+            {fullName}
+          </Text>
+        </View>
       </View>
 
       <Card variant="raised">
@@ -50,27 +65,89 @@ export default function ProfileScreen() {
           <PointsChip points={profile?.points_balance ?? 0} />
         </View>
         <Row label="Email" value={email} />
-        {appNumber ? <Row label="Member #" value={`#${String(appNumber).padStart(3, '0')}`} /> : null}
+        {appNumber ? (
+          <Row
+            label="Member #"
+            value={`#${String(appNumber).padStart(3, '0')}`}
+          />
+        ) : null}
         {profile?.city ? <Row label="City" value={profile.city} /> : null}
         {profile?.instagram_handle ? (
           <Row label="Instagram" value={`@${profile.instagram_handle}`} />
         ) : null}
         {profile?.approved_at ? (
-          <Row label="Approved" value={new Date(profile.approved_at).toLocaleDateString()} />
+          <Row
+            label="Approved"
+            value={new Date(profile.approved_at).toLocaleDateString()}
+          />
         ) : null}
+        <Button
+          label="Edit Profile"
+          variant="secondary"
+          fullWidth
+          style={{ marginTop: 14 }}
+          onPress={() => router.push('/profile/edit')}
+        />
       </Card>
 
-      <Card variant="inset">
-        <Text variant="h3">Coming Soon</Text>
-        <Text variant="small" tone="muted" style={{ marginTop: 6 }}>
-          Profile editor (photo, primary car, Instagram), member QR card, build
-          galleries, achievements wall.
-        </Text>
-      </Card>
+      <View style={{ gap: 10 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Text variant="h3">Garage</Text>
+          <Button
+            label="Add Car"
+            size="sm"
+            variant="secondary"
+            onPress={() => router.push('/cars/new')}
+          />
+        </View>
+
+        {carsLoading ? (
+          <Card variant="inset">
+            <Text variant="small" tone="muted">
+              Loading your garage…
+            </Text>
+          </Card>
+        ) : cars.length === 0 ? (
+          <Card variant="inset">
+            <Text variant="bodyBold">No cars yet.</Text>
+            <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
+              Add your daily, weekend, or project car. Your primary car shows
+              up across DSC.
+            </Text>
+          </Card>
+        ) : (
+          <View style={{ gap: 10 }}>
+            {cars.map((car) => (
+              <CarRow key={car.id} car={car} />
+            ))}
+          </View>
+        )}
+      </View>
 
       <Divider />
 
-      <Button label="Sign out" variant="secondary" fullWidth onPress={confirmSignOut} />
+      <Button
+        label="Sign out"
+        variant="secondary"
+        fullWidth
+        onPress={confirmSignOut}
+      />
+      <Text
+        variant="caption"
+        tone="muted"
+        style={{ textAlign: 'center', marginTop: 4 }}
+      >
+        DSC · East Valley · {new Date().getFullYear()}
+      </Text>
+
+      {/* keep colors import alive on web tree-shaking */}
+      <View style={{ height: 0, backgroundColor: colors.sand }} />
     </Screen>
   );
 }
@@ -87,7 +164,9 @@ function Row({ label, value }: { label: string; value: string }) {
       <Text variant="caption" tone="muted">
         {label.toUpperCase()}
       </Text>
-      <Text variant="bodyBold">{value}</Text>
+      <Text variant="bodyBold" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {value}
+      </Text>
     </View>
   );
 }

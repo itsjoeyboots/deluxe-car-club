@@ -8,3 +8,7 @@ export { PointsChip } from './PointsChip';
 export { Screen } from './Screen';
 export { Divider } from './Divider';
 export { ScarcityCounter } from './ScarcityCounter';
+export { Avatar } from './Avatar';
+export { CarForm } from './CarForm';
+export { CarGallery } from './CarGallery';
+export { CarRow } from './CarRow';
