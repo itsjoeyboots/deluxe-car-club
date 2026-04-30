@@ -18,6 +18,7 @@ import {
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { useEvent, rsvpToEvent, cancelRsvp } from '@/hooks/use-events';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts, radii } from '@/lib/theme';
 import type { EventTier, MemberStatus, MemberTier } from '@/types/db';
 
@@ -104,6 +105,48 @@ export default function EventDetailScreen() {
     setBusy(false);
     if (!result.ok) {
       showError('Could not cancel', result.error ?? 'Unknown error');
+      return;
+    }
+    refresh();
+  }
+
+  async function handleDeleteEvent() {
+    if (!event) return;
+    const confirmed = await confirmAction(
+      'Delete event?',
+      'This removes the event and all RSVPs for it. This cannot be undone.',
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', event.id);
+    setBusy(false);
+    if (error) {
+      console.error('[event] delete failed', error);
+      showError('Could not delete', error.message);
+      return;
+    }
+    router.replace('/(tabs)/events');
+  }
+
+  async function handleCancelEvent() {
+    if (!event) return;
+    const confirmed = await confirmAction(
+      'Cancel event?',
+      'Members will see it as cancelled but the record stays. Use Delete instead to wipe it entirely.',
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from('events')
+      .update({ status: 'cancelled' })
+      .eq('id', event.id);
+    setBusy(false);
+    if (error) {
+      console.error('[event] cancel failed', error);
+      showError('Could not cancel', error.message);
       return;
     }
     refresh();
@@ -275,6 +318,39 @@ export default function EventDetailScreen() {
           onPress={handleRsvp}
         />
       )}
+
+      {profile?.role === 'admin' ? (
+        <View style={{ gap: 10, marginTop: 8 }}>
+          <Divider />
+          <Text variant="eyebrow" tone="muted">
+            Admin actions
+          </Text>
+          {event.status !== 'cancelled' ? (
+            <Button
+              label="Cancel Event"
+              variant="secondary"
+              fullWidth
+              onPress={handleCancelEvent}
+              disabled={busy}
+            />
+          ) : (
+            <Card variant="inset">
+              <Text variant="bodyBold">This event is cancelled.</Text>
+              <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
+                Members see it marked cancelled. Delete below to remove
+                permanently.
+              </Text>
+            </Card>
+          )}
+          <Button
+            label="Delete Event"
+            variant="danger"
+            fullWidth
+            onPress={handleDeleteEvent}
+            disabled={busy}
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }
@@ -316,6 +392,19 @@ function showError(title: string, message: string) {
     return;
   }
   Alert.alert(title, message);
+}
+
+async function confirmAction(title: string, message: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') return false;
+    return window.confirm(`${title}\n\n${message}`);
+  }
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Confirm', style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
 }
 
 const styles = StyleSheet.create({
