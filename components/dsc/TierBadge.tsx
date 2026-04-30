@@ -15,24 +15,24 @@ const tierLabel: Record<Tier, string> = {
 
 const tierPalette: Record<Tier, { bg: string; fg: string; border: string }> = {
   guest: {
-    bg: 'rgba(28, 16, 8, 0.06)',
+    bg: 'rgba(255, 255, 255, 0.06)',
     fg: colors.textSecondary,
     border: colors.border,
   },
   pending: {
-    bg: 'rgba(200, 152, 42, 0.12)',
+    bg: 'rgba(229, 229, 226, 0.12)',
     fg: colors.gold,
     border: colors.gold,
   },
   approved: {
-    bg: 'rgba(196, 98, 45, 0.12)',
-    fg: colors.terracottaDeep,
+    bg: 'rgba(34, 211, 218, 0.14)',
+    fg: colors.terracotta,
     border: colors.terracotta,
   },
   drivers: {
     bg: colors.terracottaDeep,
-    fg: colors.sandLight,
-    border: colors.terracottaDeep,
+    fg: colors.textOnDark,
+    border: colors.terracotta,
   },
   collector: {
     bg: colors.ink,

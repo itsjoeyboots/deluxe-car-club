@@ -1,5 +1,5 @@
 /**
- * Hand-written DB types for the Desert Social Club schema (supabase/migrations/0001_init.sql).
+ * Hand-written DB types for the Deluxe Car Club schema (supabase/migrations/0001_init.sql).
  * Replace with `supabase gen types typescript` once the project is provisioned.
  */
 

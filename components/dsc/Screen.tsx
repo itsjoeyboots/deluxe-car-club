@@ -34,7 +34,7 @@ export function Screen({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.sand,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,

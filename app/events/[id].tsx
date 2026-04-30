@@ -179,7 +179,7 @@ export default function EventDetailScreen() {
       ) : (
         <View style={[styles.hero, styles.heroPlaceholder]}>
           <Text variant="eyebrow" tone="onDark">
-            Desert Social Club
+            Deluxe Car Club
           </Text>
         </View>
       )}

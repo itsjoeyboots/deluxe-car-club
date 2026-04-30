@@ -20,7 +20,7 @@ export function MemberCard({
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.eyebrow}>Desert Social Club</Text>
+          <Text style={styles.eyebrow}>Deluxe Car Club</Text>
           <Text style={styles.number}>{number}</Text>
         </View>
         <TierBadge tier={tier} />

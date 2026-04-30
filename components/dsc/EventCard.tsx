@@ -44,7 +44,7 @@ export function EventCard({ event }: { event: EventWithRsvp }) {
       ) : (
         <View style={[styles.hero, styles.heroPlaceholder]}>
           <Text variant="eyebrow" tone="onDark">
-            DSC
+            DCC
           </Text>
         </View>
       )}

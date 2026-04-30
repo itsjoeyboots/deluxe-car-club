@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Button, Screen, Text, TextField, Divider } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { MEMBERSHIP } from '@/lib/membership';
+import { colors } from '@/lib/theme';
 
 export default function SignUpScreen() {
   const { signUpWithPassword, configured } = useAuth();
@@ -61,8 +62,8 @@ export default function SignUpScreen() {
         {!configured ? (
           <View
             style={{
-              backgroundColor: '#FFF4E0',
-              borderColor: '#C8982A',
+              backgroundColor: colors.surfaceRaised,
+              borderColor: colors.terracotta,
               borderWidth: 1,
               borderRadius: 12,
               padding: 14,

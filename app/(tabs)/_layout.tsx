@@ -14,12 +14,12 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.terracottaDeep,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.terracotta,
+        tabBarInactiveTintColor: colors.textSecondary,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: colors.sandLight,
+          backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
         },

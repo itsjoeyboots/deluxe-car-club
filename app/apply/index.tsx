@@ -26,7 +26,7 @@ const STEPS = [
   { key: 'intro', title: 'Welcome' },
   { key: 'personal', title: 'About You' },
   { key: 'car', title: 'Your Car' },
-  { key: 'motivation', title: 'Why DSC' },
+  { key: 'motivation', title: 'Why DCC' },
   { key: 'review', title: 'Review & Pay' },
 ] as const;
 
@@ -176,7 +176,7 @@ export default function ApplyScreen() {
     >
       <Stack.Screen
         options={{
-          title: 'Apply to DSC',
+          title: 'Apply to DCC',
           headerShown: true,
           headerBackTitle: 'Back',
         }}
@@ -405,7 +405,7 @@ function MotivationStep(props: {
         label="Why are you applying?"
         value={props.motivation}
         onChangeText={props.setMotivation}
-        placeholder="What you're hoping to get out of DSC. Be honest, no buzzwords needed."
+        placeholder="What you're hoping to get out of DCC. Be honest, no buzzwords needed."
         multiline
         numberOfLines={5}
         style={{ minHeight: 110, textAlignVertical: 'top' }}

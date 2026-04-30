@@ -1,15 +1,15 @@
 import type { Theme } from '@react-navigation/native';
 import { colors } from './theme';
 
-export const dscNavTheme: Theme = {
-  dark: false,
+export const dccNavTheme: Theme = {
+  dark: true,
   colors: {
     primary: colors.terracotta,
-    background: colors.sand,
-    card: colors.sandLight,
-    text: colors.ink,
-    border: 'rgba(28, 16, 8, 0.10)',
-    notification: colors.gold,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: colors.border,
+    notification: colors.terracotta,
   },
   fonts: {
     regular: { fontFamily: 'Inter_400Regular', fontWeight: '400' },

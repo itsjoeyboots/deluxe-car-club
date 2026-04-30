@@ -5,22 +5,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // DSC brand palette — see /lib/theme.ts for the canonical source
+        // DCC brand palette — see /lib/theme.ts for the canonical source.
+        // Token names retained from the DSC era; values pivoted dark luxury.
         terracotta: {
-          DEFAULT: '#C4622D',
-          deep: '#8B3A1B',
+          DEFAULT: '#22D3DA', // turquoise primary accent
+          deep: '#0EA8B5',
         },
         sand: {
-          DEFAULT: '#F5E6C8',
-          light: '#FAF0DC',
+          DEFAULT: '#13131A', // dark surface
+          light: '#1C1C26',
         },
         ink: {
-          DEFAULT: '#1C1008',
-          muted: '#2A2418',
+          DEFAULT: '#0B0B0D',
+          muted: '#15151B',
         },
         gold: {
-          DEFAULT: '#C8982A',
-          bright: '#E8C060',
+          DEFAULT: '#E5E5E2', // metallic silver / ivory
+          bright: '#7AECEF', // bright cyan glow
         },
       },
       fontFamily: {

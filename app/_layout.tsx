@@ -17,7 +17,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
 import '../global.css';
-import { dscNavTheme } from '@/lib/nav-theme';
+import { dccNavTheme } from '@/lib/nav-theme';
 import { AuthProvider } from '@/lib/auth-context';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -43,7 +43,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={dscNavTheme}>
+      <ThemeProvider value={dccNavTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
@@ -71,7 +71,7 @@ export default function RootLayout() {
             name="apply/index"
             options={{
               headerShown: true,
-              title: 'Apply to DSC',
+              title: 'Apply to DCC',
               presentation: 'modal',
             }}
           />
@@ -112,7 +112,7 @@ export default function RootLayout() {
             options={{ headerShown: true, title: 'Member' }}
           />
         </Stack>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
       </ThemeProvider>
     </AuthProvider>
   );

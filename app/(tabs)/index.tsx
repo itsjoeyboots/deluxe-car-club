@@ -81,7 +81,7 @@ export default function HomeScreen() {
           />
           <View style={{ flex: 1 }}>
             <Text variant="eyebrow" tone="terracotta">
-              Desert Social Club
+              Deluxe Car Club
             </Text>
             <Text variant="display" style={{ marginTop: 2 }}>
               Hey {displayName}.
@@ -234,14 +234,14 @@ export default function HomeScreen() {
       <Section title="Partner Deals">
         <Card variant="inset">
           <Text variant="small" tone="muted">
-            DSC partner shops, discounts, and tour days will live here.
+            DCC partner shops, discounts, and tour days will live here.
           </Text>
         </Card>
       </Section>
 
       <View style={{ alignItems: 'center', paddingTop: 12 }}>
         <Text variant="caption" tone="muted">
-          Built in the East Valley · {new Date().getFullYear()}
+          Deluxe Car Club · {new Date().getFullYear()}
         </Text>
       </View>
     </Screen>

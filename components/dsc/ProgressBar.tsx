@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   track: {
     height: 6,
     width: '100%',
-    backgroundColor: 'rgba(28, 16, 8, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     borderRadius: radii.pill,
     overflow: 'hidden',
   },

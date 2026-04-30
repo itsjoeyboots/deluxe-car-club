@@ -89,7 +89,7 @@ export default function AdminApplicationsScreen() {
         <Stack.Screen options={{ title: 'Admin', headerShown: true }} />
         <Text variant="display">Admins only.</Text>
         <Text tone="muted">
-          This area is reserved for DSC founders. If you should have access,
+          This area is reserved for DCC founders. If you should have access,
           ask another admin to flip your role.
         </Text>
         <Button label="Back" variant="secondary" onPress={() => router.back()} />
@@ -232,7 +232,7 @@ function ApplicationCard({
       {app.motivation_text ? (
         <View style={{ marginTop: 10 }}>
           <Text variant="eyebrow" tone="muted">
-            Why DSC
+            Why DCC
           </Text>
           <Text variant="small" style={{ marginTop: 4 }}>
             {app.motivation_text}

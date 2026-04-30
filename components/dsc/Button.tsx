@@ -84,23 +84,23 @@ export function Button({
 
 const palettes: Record<Variant, { bg: string; fg: string; border: string }> = {
   primary: {
-    bg: colors.terracottaDeep,
-    fg: colors.sandLight,
-    border: colors.terracottaDeep,
+    bg: colors.terracotta, // turquoise glow
+    fg: colors.ink,        // dark text on bright accent — crisp contrast
+    border: colors.terracotta,
   },
   secondary: {
     bg: 'transparent',
-    fg: colors.terracottaDeep,
-    border: colors.terracottaDeep,
+    fg: colors.terracotta,
+    border: colors.terracotta,
   },
   ghost: {
     bg: 'transparent',
-    fg: colors.terracottaDeep,
+    fg: colors.terracotta,
     border: 'transparent',
   },
   danger: {
     bg: colors.danger,
-    fg: colors.sandLight,
+    fg: colors.textOnDark,
     border: colors.danger,
   },
 };

@@ -1,5 +1,5 @@
 /**
- * DSC Achievement catalog. Server (`check_achievements_for_user`) is the
+ * DCC Achievement catalog. Server (`check_achievements_for_user`) is the
  * source of truth for *unlocking* — this catalog drives display copy and
  * locked-state hints.
  */
@@ -27,7 +27,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     key: 'first_event',
     title: 'First Event',
-    description: 'Checked in to your first DSC event.',
+    description: 'Checked in to your first DCC event.',
   },
   {
     key: 'sunrise_crew',
@@ -37,18 +37,18 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     key: 'rally_veteran',
     title: 'Rally Veteran',
-    description: 'Attended 3 DSC rallies.',
+    description: 'Attended 3 DCC rallies.',
     tierGate: 'collector',
   },
   {
     key: 'founding_50',
     title: 'Founding 50',
-    description: 'One of the first 50 approved DSC members.',
+    description: 'One of the first 50 approved DCC members.',
   },
   {
     key: 'year_one',
     title: 'Year One',
-    description: 'A full year of DSC membership.',
+    description: 'A full year of DCC membership.',
   },
   {
     key: 'builder',
@@ -63,7 +63,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     key: 'track_day_warrior',
     title: 'Track Day Warrior',
-    description: 'Survived 5 DSC track days.',
+    description: 'Survived 5 DCC track days.',
   },
   {
     key: 'welcome_wagon',

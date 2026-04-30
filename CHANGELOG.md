@@ -1,5 +1,56 @@
 # Changelog
 
+## Rebrand — Deluxe Car Club (2026-04-30)
+
+The app is now **Deluxe Car Club** (DCC). Visual identity flipped from desert/cream/terracotta to dark luxury matte black with a turquoise accent (lifted from the DCC logo). Internal package name (`dsc-app`) is intentionally left alone.
+
+**What changed**
+
+- `lib/theme.ts` repurposed in place. Token names retained so the 36 component files cascade automatically; values rewritten dark.
+  - `terracotta` `#C4622D` → `#22D3DA` (turquoise accent)
+  - `terracottaDeep` `#8B3A1B` → `#0EA8B5`
+  - `sand` `#F5E6C8` → `#13131A` (dark surface)
+  - `sandLight` `#FAF0DC` → `#1C1C26`
+  - `ink` `#1C1008` → `#0B0B0D` (deepest matte black)
+  - `gold` `#C8982A` → `#E5E5E2` (metallic silver / ivory)
+  - `goldBright` `#E8C060` → `#7AECEF` (bright cyan glow)
+- `tailwind.config.js` mirrors the new values.
+- `lib/nav-theme.ts` → dark React Navigation theme; `dscNavTheme` renamed to `dccNavTheme`. `StatusBar` flipped to `light`.
+- Component palette fixes:
+  - `Button` primary now turquoise with **ink text** for sharp contrast (was light cream text on terracotta — would have been invisible).
+  - `TierBadge` palettes rewritten for dark mode: drivers uses `textOnDark` ivory text on turquoise deep; the rgba tints flipped to white-on-dark / turquoise-tinted.
+  - `ProgressBar` track color flipped from rgba(28,16,8,0.10) to rgba(255,255,255,0.10).
+  - `Screen` SafeArea bg switched from `colors.sand` to `colors.background` so the page is the deepest matte black.
+  - Tab bar uses `terracotta` (turquoise) active tint, `textSecondary` inactive, `surface` background.
+  - Hardcoded warning-banner colors on sign-in / sign-up swapped to theme tokens.
+- App icon / splash: `app.json` splash and Android adaptive icon backgrounds set to `#0B0B0D`.
+- Strings: "Desert Social Club" → "Deluxe Car Club"; "DSC" → "DCC" across user-facing copy. The welcome screen hero copy now says "Luxury · Community · Excellence" with a generic luxury automotive tagline (location-specific copy retired).
+- Stripe checkout edge function product name updated to "Deluxe Car Club — Application Fee".
+- Migration `0007_dcc_rebrand.sql` updates the seed `rewards` rows so "DSC Sticker Pack" → "DCC Sticker Pack" etc. Idempotent — safe to re-run.
+- README rewritten with the DCC name, dark palette table, and the up-to-date phase status.
+
+**What's stubbed**
+
+- **Logo asset** isn't bundled into the app yet — splash and app icon are still the Expo defaults. Easy follow-up: drop the DCC logo PNG into `assets/images/icon.png`, `splash-icon.png`, `adaptive-icon.png` and rebuild.
+- **Email-verification copy** in Supabase still references whatever you have configured — change it in Supabase → Authentication → Email Templates if it still says "Desert Social Club".
+- **Stripe product name** updates only on new checkout sessions. Already-saved sessions in the Stripe dashboard keep their old name.
+
+**What to test before moving on**
+
+1. Run `0007_dcc_rebrand.sql` in the Supabase SQL Editor.
+2. Reload the app (clear browser cache / hard refresh). The welcome screen should be deep matte black with turquoise headline and ivory text.
+3. Sign in. Tab bar bottom should be a slightly lighter dark surface with turquoise active tint.
+4. Profile tab — member card should render dark with silver border, turquoise/cyan QR. Achievements grid shows ivory text and turquoise primary.
+5. Browse the Directory — member rows should read clearly on dark.
+6. Open an event detail page — RSVP card uses the gold (now silver) accent border, QR scans clean as dark-on-dark with cyan glow.
+
+**Decisions made**
+
+- **Token names retained** even though they no longer match their literal English meanings (`sand` is now dark, `gold` is now silver). The names are aesthetic aliases now. This avoided a 36-file rename and let one `theme.ts` swap cascade everywhere.
+- **`SECURITY DEFINER` RPCs and migrations 0001–0006 left alone.** They're applied to the live database. Migration 0007 handles only the rebrand-affected seed data.
+- **Package directory + slug stay `dsc-app`** per your call. Saves a churny rename without user impact.
+- **Welcome screen tagline went generic** ("Luxury · Community · Excellence") instead of the East Valley copy. The DSC site was Arizona-specific; DCC's positioning isn't tied to a metro on the website you pointed at, so the generic luxury copy fits until you tell me otherwise.
+
 ## Phase 7 — Member Directory (2026-04-29)
 
 The Directory tab is no longer a placeholder. Approved members can browse the roster, filter by tier, search by name/city/car, and tap into a public profile that shows the other member's garage, achievements, and points lifetime.

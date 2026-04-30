@@ -146,7 +146,7 @@ export default function ProfileScreen() {
             <Text variant="bodyBold">No cars yet.</Text>
             <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
               Add your daily, weekend, or project car. Your primary car shows
-              up across DSC.
+              up across DCC.
             </Text>
           </Card>
         ) : (
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
         tone="muted"
         style={{ textAlign: 'center', marginTop: 4 }}
       >
-        DSC · East Valley · {new Date().getFullYear()}
+        Deluxe Car Club · {new Date().getFullYear()}
       </Text>
 
       {/* keep colors import alive on web tree-shaking */}

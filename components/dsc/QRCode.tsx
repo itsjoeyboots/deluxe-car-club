@@ -5,7 +5,7 @@ import { colors, radii } from '@/lib/theme';
 type Props = {
   value: string;
   size?: number;
-  /** Tint of the dark dots. Defaults to DSC ink. */
+  /** Tint of the dark dots. Defaults to DCC ink. */
   color?: string;
   /** Card background. Defaults to sand cream. */
   backgroundColor?: string;

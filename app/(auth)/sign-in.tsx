@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Screen, Text, TextField, Divider } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
+import { colors } from '@/lib/theme';
 
 export default function SignInScreen() {
   const { signInWithPassword, sendMagicLink, configured } = useAuth();
@@ -53,8 +54,8 @@ export default function SignInScreen() {
         {!configured ? (
           <View
             style={{
-              backgroundColor: '#FFF4E0',
-              borderColor: '#C8982A',
+              backgroundColor: colors.surfaceRaised,
+              borderColor: colors.terracotta,
               borderWidth: 1,
               borderRadius: 12,
               padding: 14,
@@ -76,7 +77,7 @@ export default function SignInScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
-            placeholder="you@desertsocialclub.com"
+            placeholder="you@deluxecarclub.com"
           />
           <TextField
             label="Password"

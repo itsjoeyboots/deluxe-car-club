@@ -13,7 +13,7 @@ export default function MarketplaceScreen() {
         </Text>
         <Text variant="small" tone="muted" style={{ marginTop: 8 }}>
           Wraps, performance, detailing, tints, audio — discounts and tour
-          days from East Valley shops we trust. Show your card to redeem.
+          days from shops we trust. Show your card to redeem.
         </Text>
       </View>
       <Card variant="inset">

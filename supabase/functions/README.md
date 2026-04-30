@@ -4,7 +4,7 @@ Server-side handlers for things the client can't do safely (Stripe secrets, webh
 
 ## stripe-checkout
 
-Creates a Stripe Checkout Session for the $100 DSC application fee. The mobile/web app calls this via `supabase.functions.invoke('stripe-checkout', { body: { application_id, user_id, email } })` and gets back a hosted Stripe URL to redirect the applicant to.
+Creates a Stripe Checkout Session for the $100 DCC application fee. The mobile/web app calls this via `supabase.functions.invoke('stripe-checkout', { body: { application_id, user_id, email } })` and gets back a hosted Stripe URL to redirect the applicant to.
 
 ## stripe-webhook
 

@@ -297,7 +297,7 @@ export function CarForm(props: Props) {
               <Text variant="small" tone="muted" style={{ marginTop: 2 }}>
                 {isFirstCar
                   ? 'Your first car — pre-selected as primary.'
-                  : 'Shown as your headline car across DSC.'}
+                  : 'Shown as your headline car across DCC.'}
               </Text>
             </View>
             <View

@@ -14,14 +14,14 @@ export default function WelcomeScreen() {
     <Screen contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text variant="eyebrow" tone="terracotta">
-          East Valley · Arizona
+          Luxury · Community · Excellence
         </Text>
         <Text variant="displayLg" tone="terracotta" style={styles.headline}>
-          Desert{'\n'}Social{'\n'}Club
+          Deluxe{'\n'}Car{'\n'}Club
         </Text>
         <Text variant="body" tone="secondary" style={styles.tagline}>
-          Where Arizona comes to connect. An automotive lifestyle club for
-          Queen Creek, Gilbert, Chandler — and everyone who shows up.
+          A members-only automotive lifestyle club. Curated meets, partner
+          shop discounts, and a community of builders, drivers, and collectors.
         </Text>
       </View>
 

@@ -1,4 +1,4 @@
-// Supabase Edge Function: receives Stripe events and marks DSC
+// Supabase Edge Function: receives Stripe events and marks DCC
 // applications as paid (or failed).
 //
 // Deploy:

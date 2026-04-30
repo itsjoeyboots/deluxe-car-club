@@ -1,5 +1,5 @@
 // Supabase Edge Function: create a Stripe Checkout Session for the
-// $100 DSC application fee.
+// $100 DCC application fee.
 //
 // Deploy:
 //   npx supabase functions deploy stripe-checkout
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
             currency: 'usd',
             unit_amount: FEE_USD * 100,
             product_data: {
-              name: 'Desert Social Club — Application Fee',
+              name: 'Deluxe Car Club — Application Fee',
               description:
                 'One-time, non-refundable. Covers welcome kit, hand review, and your spot in line.',
             },
