@@ -143,6 +143,25 @@ export default function HomeScreen() {
         <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
           {nextRewardLine(points)}
         </Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Browse Rewards"
+              size="sm"
+              fullWidth
+              onPress={() => router.push('/rewards')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="History"
+              variant="secondary"
+              size="sm"
+              fullWidth
+              onPress={() => router.push('/points')}
+            />
+          </View>
+        </View>
       </Card>
 
       <View style={{ gap: 8 }}>

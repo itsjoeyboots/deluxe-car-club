@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { router } from 'expo-router';
 import {
+  AchievementsGrid,
   Avatar,
   Button,
   Card,
@@ -15,11 +17,32 @@ import {
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { useMyCars } from '@/hooks/use-my-cars';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import type { AchievementKey } from '@/lib/achievements';
 import { colors } from '@/lib/theme';
 
 export default function ProfileScreen() {
   const { profile, session, signOut } = useAuth();
   const { cars, loading: carsLoading } = useMyCars();
+  const [unlocked, setUnlocked] = useState<Set<AchievementKey>>(new Set());
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured || !profile?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('achievements')
+        .select('achievement_key')
+        .eq('user_id', profile.id);
+      if (!active) return;
+      setUnlocked(
+        new Set(((data ?? []) as { achievement_key: AchievementKey }[]).map((r) => r.achievement_key)),
+      );
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.id, profile?.points_balance]);
 
   const tier: Tier = mapTier(profile?.status, profile?.tier, profile?.role);
   const fullName = profile?.full_name ?? '—';
@@ -134,6 +157,12 @@ export default function ProfileScreen() {
           </View>
         )}
       </View>
+
+      <Divider />
+
+      {profile && (profile.status === 'approved' || profile.status === 'paid') ? (
+        <AchievementsGrid unlockedKeys={unlocked} />
+      ) : null}
 
       <Divider />
 

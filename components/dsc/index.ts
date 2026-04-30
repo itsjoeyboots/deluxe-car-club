@@ -12,6 +12,7 @@ export { Avatar } from './Avatar';
 export { CarForm } from './CarForm';
 export { CarGallery } from './CarGallery';
 export { CarRow } from './CarRow';
+export { AchievementsGrid } from './AchievementsGrid';
 export { EventCard } from './EventCard';
 export { MemberCard } from './MemberCard';
 export { QRCode } from './QRCode';

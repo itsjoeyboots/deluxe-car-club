@@ -99,6 +99,14 @@ export default function RootLayout() {
             name="events/[id]"
             options={{ headerShown: true, title: 'Event' }}
           />
+          <Stack.Screen
+            name="rewards/index"
+            options={{ headerShown: true, title: 'Rewards' }}
+          />
+          <Stack.Screen
+            name="points/index"
+            options={{ headerShown: true, title: 'Points' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

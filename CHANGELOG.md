@@ -1,5 +1,54 @@
 # Changelog
 
+## Phase 6 — Points Engine (2026-04-29)
+
+The full earn-and-spend loop. Members can browse the rewards catalog, redeem with their balance, see a transaction ledger, and unlock achievement badges automatically as they hit milestones.
+
+**What works**
+
+- `/rewards` — branded catalog page reading from the seeded `rewards` table. Each card shows name, description, point cost, and a Redeem button that's disabled when the balance is short (`Need 320 more`) or the reward is sold out. Recent redemptions list at the bottom.
+- `/points` — lifetime ledger of `points_transactions` with humanized reasons (e.g. `event_checkin_first` → "First-event bonus", `reward_redemption: DSC Sticker Pack` → "Redeemed: DSC Sticker Pack"), color-coded amounts, and a current/lifetime summary card.
+- `AchievementsGrid` on the Profile tab — shows all 9 achievement tiles, unlocked ones in full color, locked ones grayed out. Counter "X of 9 unlocked".
+- Home dashboard's Points card now has Browse Rewards + History buttons.
+- Migration `0006_points_engine.sql`:
+  - `redeem_reward(reward_id)` `SECURITY DEFINER` RPC: validates approved+ status, balance, and reward availability; inserts `reward_redemptions` row + negative `points_transactions` row. The existing `bump_points_balance` trigger handles the balance subtraction.
+  - `check_achievements_for_user(uid)` RPC: idempotent (unique index on `(user_id, achievement_key)` dedupes). Inspects check-in stats, app number, approval date, and build-update count.
+  - Triggers: `on_event_rsvp_checkin` re-runs the check after every `event_rsvps.checked_in_at` update; `on_profile_milestone` runs it after `app_number`/`approved_at`/`status` changes (catches Founding 50 the moment an admin approves).
+- `lib/achievements.ts` — client-side catalog of 9 achievements (title, description, optional tier gate). Server stays the source of truth for *unlocking*; this drives display copy.
+
+**What's stubbed**
+
+- **Anniversary bonus (250 pts/year)** — needs a daily cron. Plan: add a Postgres `pg_cron` job or a Supabase scheduled edge function in Phase 11 polish.
+- **Build update points (25 / week, max one)** — wires up in Phase 8 when the build update creation UI lands. The achievement check is already counting `build_updates`, so the badge will light up on its own.
+- **Referral points (Connector achievement)** — the achievement key exists, the rule isn't wired. Needs a referral-link system: applicant says "I was referred by @joey", admin approves it, the link gets recorded in a new column. Probably its own mini-phase later.
+- **Annual renewal bonus (1,000)** — depends on the paid-tier subscription state, which lands when the membership upgrade flow ships (post-Phase 3 follow-up).
+- **Reward fulfillment workflow** — redemptions land with `status='pending'`. There's no admin UI yet to mark them "fulfilled" or "cancelled". One more admin screen in Phase 11.
+
+**What to test before moving on**
+
+1. Run `0006_points_engine.sql` in Supabase SQL Editor. Verify:
+   ```sql
+   select proname from pg_proc where proname in ('redeem_reward','check_achievements_for_user'); -- 2 rows
+   select tgname from pg_trigger where tgname in ('on_event_rsvp_checkin','on_profile_milestone'); -- 2 rows
+   ```
+2. As an approved member, open Home → tap **Browse Rewards**. The catalog should render with the 7 seeded rewards.
+3. Manually grant yourself enough points to redeem the sticker pack:
+   ```sql
+   insert into points_transactions (user_id, amount, reason)
+     values ('<your-user-id>', 1000, 'manual_grant');
+   ```
+4. Refresh Rewards. The sticker pack button should turn primary/terracotta. Tap → confirm → expect "Redeemed" alert and balance drops by 500.
+5. Tap **History** from Home. Should see the +1000 grant, +150 from the earlier check-in test, and -500 redemption with humanized labels.
+6. Profile tab — the Achievements section should show **First Event** (you scanned in earlier) and possibly **Founding 50** (if your app_number ≤ 50) lit up; everything else gray.
+7. Approve another test applicant — when their `app_number` lands ≤ 50 the trigger should auto-unlock Founding 50 for them, no extra calls.
+
+**Decisions made**
+
+- **Negative points_transactions for spends** rather than two separate columns or a different table. One ledger covers both directions, the existing trigger handles the balance, and the lifetime sum is just `sum(amount)`.
+- **`check_achievements_for_user` is idempotent** by design — every trigger calls it without worrying about double-firing. The `unique (user_id, achievement_key)` constraint with `on conflict do nothing` makes inserts safe to repeat.
+- **Tier-gated achievements still appear in the locked grid** (e.g. Rally Veteran shows for Drivers members too) so members can see what's possible at higher tiers — drives the upgrade decision the original spec calls out.
+- **Reward image_url is wired in the schema but ignored by the UI for now** — placeholder reward art is more work than the v1 needs. Easy to drop in once we have the actual stickers and tees photographed.
+
 ## Phase 5 — QR Codes & Scanner (2026-04-29)
 
 Real QR codes everywhere they were stubbed, plus a camera-based admin scanner that handles check-in, dedupe, and points in one server-side RPC.
