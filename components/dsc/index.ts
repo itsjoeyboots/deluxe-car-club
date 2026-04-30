@@ -15,4 +15,5 @@ export { CarRow } from './CarRow';
 export { AchievementsGrid } from './AchievementsGrid';
 export { EventCard } from './EventCard';
 export { MemberCard } from './MemberCard';
+export { MemberRow } from './MemberRow';
 export { QRCode } from './QRCode';

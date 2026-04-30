@@ -1,5 +1,43 @@
 # Changelog
 
+## Phase 7 — Member Directory (2026-04-29)
+
+The Directory tab is no longer a placeholder. Approved members can browse the roster, filter by tier, search by name/city/car, and tap into a public profile that shows the other member's garage, achievements, and points lifetime.
+
+**What works**
+
+- Directory tab: search bar, three-pill tier filter (All / Drivers / Collector), live count of approved members.
+- `MemberRow` cards: avatar, full name + applicant number, primary car line, city, tier pill (gold for Collector, terracotta for Drivers, ink for plain Approved). Tap routes to `/u/[id]`.
+- `useMembers` hook fetches approved + paid profiles with the primary car (joined with `car_photos` to surface a cover thumbnail), client-side filters across name / city / car / IG handle.
+- `/u/[id]` public profile: avatar + applicant number + display name + city, tier badge + points chip + "MEMBER SINCE month year", tappable Instagram card that opens instagram.com/handle, full Garage section with photo gallery per car, and the same `AchievementsGrid` used on Profile (locked vs unlocked).
+- Privacy by default: phone and email are not rendered on the public profile.
+- Approved-required gate copy when a still-pending user opens the tab.
+- Existing RLS (`approved+ can browse profiles`) already enforces the access boundary; nothing new needed in SQL.
+
+**What's stubbed**
+
+- **Privacy controls UI** — the spec calls out per-field opt-in/out (hide phone, hide email, hide IG). For now phone/email are simply never shown on `/u/[id]`. Toggleable visibility is a Phase 11 polish item — needs a `privacy` jsonb column on profiles + a toggle screen.
+- **Direct messaging** — Phase 10 in the original build order. Members tab will get a "Message" button on `/u/[id]` once `messages` table + Supabase Realtime are wired.
+- **Server-side filtering** — current filters run client-side over the full roster fetch. Fine while the cap is 200 members; swap for query-side filters once we cross a few hundred.
+- **Mod listings on the public profile car card** — schema has `mods` table; not rendered yet (lands with the build galleries phase).
+
+**What to test before moving on**
+
+1. Reload the app at http://localhost:8082 (no migration needed for this phase).
+2. As your approved admin, tap the **Directory** tab. Should show 1+ members (at least your own approved account if you approved your own application).
+3. Type your name into the search — your row should remain. Type a non-match — empty state.
+4. Tap a row → public profile opens with avatar, app number, tier, points, and the Garage section shows your car + cover photo if any.
+5. If you set an Instagram handle in Edit Profile, the IG card should open `instagram.com/<handle>` when tapped.
+6. Visit your own `/u/[id]` (tap your own row) — should show an **Edit My Profile** button at the bottom (only visible to self).
+7. As a non-approved user (sign up a fresh account), the Directory tab should show the "Approval required" callout instead of the roster.
+
+**Decisions made**
+
+- **Cap at-fetch is 200 rows max** in practice via the membership cap, so client-side filter is fine and avoids a more complex Postgres `ts_vector` setup.
+- **Self detection on `/u/[id]`** uses `viewer.id === id` — simpler than a separate `/me` route. Keeps a single profile rendering path.
+- **No phone/email on public profile by default** — sidesteps the missing privacy-flags work without leaking PII. The owner can still see their own card with everything filled in via the Profile tab.
+- **Tier pill colors are different on `MemberRow` vs `TierBadge`** intentionally: row uses solid fills for at-a-glance scanning, the badge uses gold-on-cream for the marquee profile header.
+
 ## Phase 6 — Points Engine (2026-04-29)
 
 The full earn-and-spend loop. Members can browse the rewards catalog, redeem with their balance, see a transaction ledger, and unlock achievement badges automatically as they hit milestones.

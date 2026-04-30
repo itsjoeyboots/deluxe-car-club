@@ -107,6 +107,10 @@ export default function RootLayout() {
             name="points/index"
             options={{ headerShown: true, title: 'Points' }}
           />
+          <Stack.Screen
+            name="u/[id]"
+            options={{ headerShown: true, title: 'Member' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>
