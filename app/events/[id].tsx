@@ -13,13 +13,14 @@ import {
   Button,
   Card,
   Divider,
+  QRCode,
   Screen,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { useEvent, rsvpToEvent, cancelRsvp } from '@/hooks/use-events';
 import { supabase } from '@/lib/supabase';
-import { colors, fonts, radii } from '@/lib/theme';
+import { colors, radii } from '@/lib/theme';
 import type { EventTier, MemberStatus, MemberTier } from '@/types/db';
 
 const TIER_LABEL: Record<EventTier, string> = {
@@ -271,15 +272,24 @@ export default function EventDetailScreen() {
                 : 'You’re going'}
             </Text>
             <Text variant="bodyBold" style={{ marginTop: 6 }}>
-              Show this token at check-in
+              Show this at check-in
             </Text>
-            <View style={styles.qrBox}>
-              <Text style={styles.qrText}>{event.my_rsvp.qr_code_token}</Text>
+            <View style={{ marginTop: 12, alignItems: 'center' }}>
+              <QRCode value={event.my_rsvp.qr_code_token} size={200} />
             </View>
-            <Text variant="caption" tone="muted" style={{ marginTop: 8 }}>
-              QR rendering ships in Phase 5 — for now scanners can read this
-              token directly.
-            </Text>
+            {event.my_rsvp.checked_in_at ? (
+              <Text variant="caption" tone="terracotta" style={{ marginTop: 10, textAlign: 'center' }}>
+                CHECKED IN ·{' '}
+                {new Date(event.my_rsvp.checked_in_at).toLocaleTimeString(
+                  undefined,
+                  { hour: 'numeric', minute: '2-digit' },
+                )}
+              </Text>
+            ) : (
+              <Text variant="caption" tone="muted" style={{ marginTop: 10, textAlign: 'center' }}>
+                A founder will scan this when you arrive.
+              </Text>
+            )}
           </Card>
           <Button
             label={busy ? 'Cancelling…' : 'Cancel RSVP'}
@@ -325,6 +335,17 @@ export default function EventDetailScreen() {
           <Text variant="eyebrow" tone="muted">
             Admin actions
           </Text>
+          <Button
+            label="Scan Attendees"
+            fullWidth
+            onPress={() =>
+              router.push({
+                pathname: '/admin/scan',
+                params: { event: event.id, eventTitle: event.title },
+              })
+            }
+            disabled={busy}
+          />
           {event.status !== 'cancelled' ? (
             <Button
               label="Cancel Event"
@@ -422,19 +443,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 24,
-  },
-  qrBox: {
-    backgroundColor: colors.ink,
-    borderRadius: radii.md,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  qrText: {
-    color: colors.goldBright,
-    fontFamily: fonts.sansBold,
-    letterSpacing: 1.4,
-    fontSize: 12,
   },
 });

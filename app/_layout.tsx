@@ -92,6 +92,10 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="admin/scan"
+            options={{ headerShown: true, title: 'Scanner' }}
+          />
+          <Stack.Screen
             name="events/[id]"
             options={{ headerShown: true, title: 'Event' }}
           />

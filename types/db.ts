@@ -39,6 +39,7 @@ export interface Profile {
   paid_since: string | null;
   app_number: number | null;
   points_balance: number;
+  member_qr_token: string;
   notification_prefs: Record<string, unknown>;
   created_at: string;
   updated_at: string;

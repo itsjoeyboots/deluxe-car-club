@@ -13,3 +13,5 @@ export { CarForm } from './CarForm';
 export { CarGallery } from './CarGallery';
 export { CarRow } from './CarRow';
 export { EventCard } from './EventCard';
+export { MemberCard } from './MemberCard';
+export { QRCode } from './QRCode';

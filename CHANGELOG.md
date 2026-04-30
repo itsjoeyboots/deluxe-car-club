@@ -1,5 +1,49 @@
 # Changelog
 
+## Phase 5 — QR Codes & Scanner (2026-04-29)
+
+Real QR codes everywhere they were stubbed, plus a camera-based admin scanner that handles check-in, dedupe, and points in one server-side RPC.
+
+**What works**
+
+- `MemberCard` component on the Profile tab — gold-bordered digital card with applicant number, tier badge, full name + city, and a 200px QR encoding `profiles.member_qr_token`. Only renders for approved/paid members.
+- Real QR (via `react-native-qrcode-svg`) on `/events/[id]` for any RSVP'd member, replacing the text token block. Shows `CHECKED IN · 9:42 AM` once a founder has scanned them.
+- `/admin/scan` — camera-based scanner using `expo-camera` `CameraView` with `barcodeTypes: ['qr']`. Auto-decodes, calls `checkin_member` RPC, shows result for ~1.8s, then resets to scan the next member.
+- Manual fallback: if the camera can't lock on, paste a token in the input below the camera view.
+- Web fallback: web doesn't expose camera scanning here, so the camera frame shows a "use the iOS/Android app" message and the manual input still works for testing.
+- Per-event scan entry: admin's `/events/[id]` has a **Scan Attendees** button that deep-links to `/admin/scan?event=<id>&eventTitle=<title>`, locking the scanner to that event.
+- Migration `0005_qr_checkin.sql`:
+  - Adds `profiles.member_qr_token` (unique, auto-generated via `gen_random_uuid()` on insert + backfill for existing rows).
+  - Updates `handle_new_user` to also generate a token at signup.
+  - Adds `checkin_member(qr_data, target_event)` `SECURITY DEFINER` RPC. Resolves the QR to a user (member token first, then RSVP token), inserts an RSVP for walk-ups, dedupes via `event_rsvps.checked_in_at`, awards 100 points (+50 first-event bonus), and returns a row the scanner UI uses to render success copy.
+
+**What's stubbed**
+
+- **Geofence enforcement** — the original spec marks this optional. Not wired; scans work anywhere.
+- **Push notifications** — still deferred. The check-in API is in place so the points-milestone push will be easy to add when notifications land.
+- **Admin "list all check-ins for this event"** view. Easy follow-up but not in Phase 5 scope.
+
+**What to test before moving on**
+
+1. Run `0005_qr_checkin.sql` in Supabase SQL Editor. Verify:
+   ```sql
+   select count(*) from profiles where member_qr_token is null;            -- 0
+   select proname from pg_proc where proname = 'checkin_member';           -- 1 row
+   ```
+2. As an approved member, open the Profile tab. The DSC member card should render with a real QR.
+3. RSVP to an event, open the event page. The QR card should now show a code instead of the old text token.
+4. As an admin, open the same event → tap **Scan Attendees** → on a real device, point at the QR. On web, paste the token into the manual input.
+5. First scan: should show "Checked in · 150 points · first event bonus" (or 100 if you've already attended others).
+6. Re-scan the same member: should show "Already checked in. No points awarded." Verify `select * from points_transactions where user_id = ...` returns only one row for that event.
+7. As an admin, open the Profile tab and confirm your member card has the same QR you've been scanning.
+
+**Decisions made**
+
+- **One RPC handles everything (`checkin_member`)** instead of separate endpoints for "scan member token" vs "scan RSVP token." Saves a round-trip and lets us walk up unregistered approved members at the door without a manual RSVP step.
+- **Walk-up insert** when no RSVP exists: creates `event_rsvps` with `qr_code_token = 'walkup_…'` so we never lose the audit trail. The scanner doesn't reject a member for not RSVPing — founders aren't going to send people away at the door.
+- **Permanent member QR token (`profiles.member_qr_token`)** instead of regenerating on every scan. Members can screenshot their card and use it forever. If we ever need to rotate (lost phone), we add an admin "reset token" button later.
+- **Web shows the camera fallback message** rather than trying `getUserMedia` — keeps the bundle smaller and avoids platform-specific permission UX. Manual entry still works on web for testing the RPC.
+
 ## Phase 4 — Events & RSVP (2026-04-29)
 
 The events tab is no longer a placeholder. Members can browse upcoming and past events, RSVP, get a unique check-in token per event, and admins can create events end-to-end (form + hero image upload).

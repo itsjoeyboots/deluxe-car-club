@@ -6,6 +6,7 @@ import {
   Card,
   CarRow,
   Divider,
+  MemberCard,
   PointsChip,
   Screen,
   Text,
@@ -89,6 +90,10 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/edit')}
         />
       </Card>
+
+      {profile && (profile.status === 'approved' || profile.status === 'paid') ? (
+        <MemberCard profile={profile} tier={tier} />
+      ) : null}
 
       <View style={{ gap: 10 }}>
         <View

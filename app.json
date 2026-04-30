@@ -38,6 +38,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Desert Social Club uses the camera to scan member QR codes at events for check-in.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {
