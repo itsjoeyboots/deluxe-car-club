@@ -35,6 +35,26 @@ export function CarForm(props: Props) {
   const [isPrimary, setIsPrimary] = useState(false);
   const [loading, setLoading] = useState(props.mode === 'edit');
   const [saving, setSaving] = useState(false);
+  const [isFirstCar, setIsFirstCar] = useState(false);
+
+  // For create mode: default the toggle to ON if this is the user's first car.
+  useEffect(() => {
+    if (props.mode !== 'create' || !userId) return;
+    let active = true;
+    (async () => {
+      const { count } = await supabase
+        .from('cars')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      if (!active) return;
+      const first = (count ?? 0) === 0;
+      setIsFirstCar(first);
+      if (first) setIsPrimary(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [props.mode, userId]);
 
   useEffect(() => {
     if (props.mode !== 'edit') return;
@@ -47,7 +67,7 @@ export function CarForm(props: Props) {
         .maybeSingle();
       if (!active) return;
       if (error || !data) {
-        Alert.alert('Could not load car', error?.message ?? 'Not found');
+        showError('Could not load car', error?.message ?? 'Not found');
         router.back();
         return;
       }
@@ -66,80 +86,109 @@ export function CarForm(props: Props) {
   }, [props]);
 
   async function handleSave() {
-    if (!userId) return;
+    if (!userId) {
+      showError('Not signed in', 'Please sign in again before saving.');
+      return;
+    }
     if (!make.trim() || !model.trim()) {
-      Alert.alert('Missing info', 'Make and model are required.');
+      showError('Missing info', 'Make and model are required.');
       return;
     }
     const yearNum = year.trim() ? Number(year.trim()) : null;
     if (year.trim() && (!yearNum || yearNum < 1900 || yearNum > 2100)) {
-      Alert.alert('Invalid year', 'Use a four-digit year.');
+      showError('Invalid year', 'Use a four-digit year.');
       return;
     }
     setSaving(true);
 
-    if (isPrimary) {
-      // Make sure only one car is primary
-      await supabase
-        .from('cars')
-        .update({ is_primary: false })
-        .eq('user_id', userId)
-        .eq('is_primary', true);
-    }
+    try {
+      if (isPrimary) {
+        // Make sure only one car is primary
+        const { error: demoteErr } = await supabase
+          .from('cars')
+          .update({ is_primary: false })
+          .eq('user_id', userId)
+          .eq('is_primary', true);
+        if (demoteErr) {
+          console.error('[CarForm] demote primary failed', demoteErr);
+        }
+      }
 
-    const payload = {
-      user_id: userId,
-      year: yearNum,
-      make: make.trim(),
-      model: model.trim(),
-      nickname: nickname.trim() || null,
-      status,
-      is_primary: isPrimary,
-    };
+      const payload = {
+        user_id: userId,
+        year: yearNum,
+        make: make.trim(),
+        model: model.trim(),
+        nickname: nickname.trim() || null,
+        status,
+        is_primary: isPrimary,
+      };
 
-    if (props.mode === 'create') {
-      const { data, error } = await supabase
-        .from('cars')
-        .insert(payload)
-        .select('id')
-        .single();
-      setSaving(false);
-      if (error || !data) {
-        Alert.alert('Could not save', error?.message ?? 'Unknown error');
+      if (props.mode === 'create') {
+        const { data, error } = await supabase
+          .from('cars')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (error || !data) {
+          console.error('[CarForm] insert failed', error, payload);
+          showError(
+            'Could not save',
+            error?.message ?? 'Insert returned no row. Check the browser console.',
+          );
+          return;
+        }
+        router.back();
         return;
       }
-      router.replace(`/cars/${data.id}`);
-      return;
-    }
 
-    const { error } = await supabase
-      .from('cars')
-      .update(payload)
-      .eq('id', props.carId);
-    setSaving(false);
-    if (error) {
-      Alert.alert('Could not save', error.message);
-      return;
+      const { error } = await supabase
+        .from('cars')
+        .update(payload)
+        .eq('id', props.carId);
+      if (error) {
+        console.error('[CarForm] update failed', error, payload);
+        showError('Could not save', error.message);
+        return;
+      }
+      router.back();
+    } catch (err) {
+      console.error('[CarForm] save threw', err);
+      showError(
+        'Save failed',
+        err instanceof Error ? err.message : 'Unknown error',
+      );
+    } finally {
+      setSaving(false);
     }
-    router.back();
   }
 
   async function handleDelete() {
     if (props.mode !== 'edit') return;
+    const doDelete = async () => {
+      const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', props.carId);
+      if (error) {
+        console.error('[CarForm] delete failed', error);
+        showError('Could not delete', error.message);
+      } else {
+        router.back();
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (
+        typeof window !== 'undefined' &&
+        window.confirm('Delete car? This removes the car and its build updates.')
+      ) {
+        await doDelete();
+      }
+      return;
+    }
     Alert.alert('Delete car?', 'This removes the car and its build updates.', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const { error } = await supabase
-            .from('cars')
-            .delete()
-            .eq('id', props.carId);
-          if (error) Alert.alert('Could not delete', error.message);
-          else router.back();
-        },
-      },
+      { text: 'Delete', style: 'destructive', onPress: doDelete },
     ]);
   }
 
@@ -246,7 +295,9 @@ export function CarForm(props: Props) {
             <View style={{ flex: 1, paddingRight: 14 }}>
               <Text variant="bodyBold">Primary car</Text>
               <Text variant="small" tone="muted" style={{ marginTop: 2 }}>
-                Shown as your headline car across DSC.
+                {isFirstCar
+                  ? 'Your first car — pre-selected as primary.'
+                  : 'Shown as your headline car across DSC.'}
               </Text>
             </View>
             <View
@@ -303,6 +354,14 @@ export function CarForm(props: Props) {
       </Screen>
     </KeyboardAvoidingView>
   );
+}
+
+function showError(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
 }
 
 function StatusPill({

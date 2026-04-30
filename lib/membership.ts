@@ -5,7 +5,7 @@
 export const MEMBERSHIP = {
   approvedCap: 200,
   paidCap: 100,
-  applicationFeeUsd: 50,
+  applicationFeeUsd: 100,
   drivers: {
     monthly: 100,
     annual: 1000,

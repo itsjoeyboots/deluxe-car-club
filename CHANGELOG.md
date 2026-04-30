@@ -1,5 +1,45 @@
 # Changelog
 
+## Phase 3 — Application Flow (2026-04-29)
+
+The funnel from guest → pending → approved is fully wired in-app. Stripe is scaffolded but not deployed; until you add a Stripe key the app uses dev-skip mode.
+
+**What works**
+
+- `/apply` — 5-step application form (intro, personal, car, motivation, review). Edits run-of-the-mill profile fields (name, city, phone, IG) plus inserts an `applications` row with motivation and `heard_via`.
+- `lib/stripe.ts` — `startApplicationCheckout()` calls the `stripe-checkout` edge function when `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set; falls back to dev-skip mode (marks the application paid locally) when it isn't.
+- `/apply/confirmation` — receipt screen showing submission date, payment status, and a "what's next" panel.
+- `/admin` — admin-only queue of pending applications. Approve calls `approve_application(app_id)` RPC which atomically assigns the next sequential `app_number`, sets `profile.status = 'approved'`, stamps `approved_at`, and updates the application row. Reject calls `reject_application(app_id, reason)` and sets the profile to `rejected`.
+- Home dashboard pulls live counts from `membership_counts()` RPC — scarcity counter is real now.
+- Profile tab shows an "Application Pending" callout for `status='pending'` users and an "Open Admin" button for `role='admin'` accounts.
+- Application fee bumped to **$100** in `lib/membership.ts`.
+- Migration `0003_application_extras.sql` adds `applications.heard_via`, `applications.payment_intent_id`, and the three RPCs (`approve_application`, `reject_application`, `membership_counts`).
+- `supabase/functions/stripe-checkout/` and `supabase/functions/stripe-webhook/` ship as Deno templates with full README; deploy them when you're ready to take real money.
+
+**What's stubbed**
+
+- **Stripe is not deployed.** Without `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` and the two edge functions, the app uses dev-skip mode and writes `payment_intent_id = 'dev_skip_<ts>'`. Read `supabase/functions/README.md` for deploy steps.
+- **Email notifications** on approval/rejection — not wired. Hook this into a Postgres trigger or a third edge function (Resend / Postmark / SES) in a follow-up.
+- **App-number reservation** is naive (`max+1`); fine for low concurrency but should be replaced with a Postgres sequence if you ever expect simultaneous approvals.
+- The "Approved" digital welcome card with the formatted app number lives on the profile tab already, but it just shows the number — no QR yet (Phase 5).
+
+**What to test before moving on**
+
+1. Run `0003_application_extras.sql` against Supabase (SQL Editor → paste → Run). Verify with `select proname from pg_proc where proname in ('approve_application','reject_application','membership_counts');` — should return 3 rows.
+2. As a fresh signed-up user, tap **Start Application** on home → walk through the 5 steps → submit. With no Stripe key set, you should land on the confirmation screen and your profile status should flip to `pending`.
+3. Promote your test account to admin: `update profiles set role = 'admin' where email = '<you>';`
+4. Reload the app. Profile tab should show **Open Admin**. Tap into it.
+5. Approve one of the pending apps. Verify: profile.status flips to `approved`, profile.app_number is set, application.status = approved.
+6. Reject another pending app with a reason. Verify: profile.status = `rejected`, application.notes = reason.
+7. Home scarcity counter should now read `1 / 200 approved`.
+
+**Decisions made**
+
+- **One screen, internal step state** for the application form instead of multiple route files. Simpler navigation, easier validation, and the user can press the OS back button without losing progress.
+- **Dev-skip mode** instead of "Stripe required" — lets us test the approval flow without a Stripe account. The flag is the presence of `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Switching modes is a one-line env change.
+- **`approve_application` is `SECURITY DEFINER`** so admins can update applications + profiles atomically without needing every individual UPDATE policy to allow admin writes. Authorization is enforced by the `is_admin()` check at the top.
+- **App number assigned at approval, not application** — keeps the sequence dense (no gaps from rejected applicants) and matches the spec ("Approved applicants get a digital welcome card with their app number").
+
 ## Phase 2 — Profiles & Garage (2026-04-29)
 
 The member profile fills out: avatar uploads, a finish-your-profile checklist on home, a garage you can add cars to, and a photo gallery per car.

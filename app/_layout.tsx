@@ -67,6 +67,22 @@ export default function RootLayout() {
             name="cars/[id]"
             options={{ headerShown: true, title: 'Edit Car' }}
           />
+          <Stack.Screen
+            name="apply/index"
+            options={{
+              headerShown: true,
+              title: 'Apply to DSC',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="apply/confirmation"
+            options={{ headerShown: true, title: 'Submitted' }}
+          />
+          <Stack.Screen
+            name="admin/index"
+            options={{ headerShown: true, title: 'Admin' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

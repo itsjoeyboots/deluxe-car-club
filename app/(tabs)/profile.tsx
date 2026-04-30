@@ -132,6 +132,27 @@ export default function ProfileScreen() {
 
       <Divider />
 
+      {profile?.role === 'admin' ? (
+        <Button
+          label="Open Admin"
+          variant="primary"
+          fullWidth
+          onPress={() => router.push('/admin')}
+        />
+      ) : null}
+
+      {profile?.status === 'pending' ? (
+        <Card variant="inset">
+          <Text variant="eyebrow" tone="terracotta">
+            Application Pending
+          </Text>
+          <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
+            Founders are reading your application. You{'’'}ll get an email
+            when a decision is made.
+          </Text>
+        </Card>
+      ) : null}
+
       <Button
         label="Sign out"
         variant="secondary"

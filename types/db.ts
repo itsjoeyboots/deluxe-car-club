@@ -51,6 +51,8 @@ export interface Application {
   motivation_text: string | null;
   referred_by: string | null;
   payment_status: 'pending' | 'paid' | 'refunded' | 'failed';
+  payment_intent_id: string | null;
+  heard_via: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   status: ApplicationStatus;

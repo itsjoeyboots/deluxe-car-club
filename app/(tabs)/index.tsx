@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
   Avatar,
   Button,
@@ -25,6 +27,24 @@ import { colors } from '@/lib/theme';
 export default function HomeScreen() {
   const { profile, session } = useAuth();
   const { cars } = useMyCars();
+  const [counts, setCounts] = useState<{ approved: number; paid: number }>({
+    approved: 0,
+    paid: 0,
+  });
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured) return;
+    (async () => {
+      const { data, error } = await supabase.rpc('membership_counts');
+      if (!active || error || !data) return;
+      const row = (data as { approved_count: number; paid_count: number }[])[0];
+      if (row) setCounts({ approved: row.approved_count, paid: row.paid_count });
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile?.status]);
 
   const displayName =
     profile?.full_name?.split(' ')[0] ??
@@ -127,14 +147,11 @@ export default function HomeScreen() {
           Spots in the club
         </Text>
         <ScarcityCounter
-          approved={0}
+          approved={counts.approved}
           approvedCap={MEMBERSHIP.approvedCap}
-          paid={0}
+          paid={counts.paid}
           paidCap={MEMBERSHIP.paidCap}
         />
-        <Text variant="caption" tone="muted">
-          Counts will go live once the database is connected.
-        </Text>
       </View>
 
       {tier === 'guest' || tier === 'pending' ? (
@@ -158,9 +175,7 @@ export default function HomeScreen() {
               size="md"
               fullWidth
               style={{ marginTop: 14 }}
-              onPress={() => {
-                // Wired up in Phase 3
-              }}
+              onPress={() => router.push('/apply')}
             />
           ) : null}
         </Card>
