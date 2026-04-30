@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   Divider,
+  EventCard,
   PointsChip,
   ProgressBar,
   ScarcityCounter,
@@ -17,6 +18,7 @@ import {
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { useMyCars } from '@/hooks/use-my-cars';
+import { useEvents } from '@/hooks/use-events';
 import { MEMBERSHIP } from '@/lib/membership';
 import {
   profileChecklist,
@@ -27,6 +29,7 @@ import { colors } from '@/lib/theme';
 export default function HomeScreen() {
   const { profile, session } = useAuth();
   const { cars } = useMyCars();
+  const { events: upcomingEvents } = useEvents('upcoming');
   const [counts, setCounts] = useState<{ approved: number; paid: number }>({
     approved: 0,
     paid: 0,
@@ -184,12 +187,20 @@ export default function HomeScreen() {
       <Divider tone="gold" />
 
       <Section title="Upcoming Events">
-        <Card variant="inset">
-          <Text variant="small" tone="muted">
-            No events on the books yet. Check back after the founders post the
-            spring rally schedule.
-          </Text>
-        </Card>
+        {upcomingEvents.length === 0 ? (
+          <Card variant="inset">
+            <Text variant="small" tone="muted">
+              No events on the books yet. Check back after the founders post the
+              next rally schedule.
+            </Text>
+          </Card>
+        ) : (
+          <View style={{ gap: 14 }}>
+            {upcomingEvents.slice(0, 3).map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </View>
+        )}
       </Section>
 
       <Section title="Featured Builds">

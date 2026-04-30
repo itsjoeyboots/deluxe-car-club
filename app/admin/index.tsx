@@ -148,6 +148,17 @@ export default function AdminApplicationsScreen() {
         />
       </View>
 
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="New Event"
+            variant="secondary"
+            fullWidth
+            onPress={() => router.push('/admin/events/new')}
+          />
+        </View>
+      </View>
+
       <Divider />
 
       {loading ? (

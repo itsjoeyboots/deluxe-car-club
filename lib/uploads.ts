@@ -76,3 +76,20 @@ export async function pickAndUploadCarPhoto(
   const { data } = supabase.storage.from('car-photos').getPublicUrl(path);
   return { ok: true, publicUrl: data.publicUrl, path };
 }
+
+export async function pickAndUploadEventHero(): Promise<UploadResult> {
+  const asset = await pickImage({ aspect: [16, 9], quality: 0.85 });
+  if (!asset) return { ok: false, cancelled: true };
+  const ext = extFromMime(asset.mimeType);
+  const path = `events/${Date.now()}.${ext}`;
+  const buf = await uriToArrayBuffer(asset.uri);
+  const { error } = await supabase.storage
+    .from('events-public')
+    .upload(path, buf, {
+      contentType: asset.mimeType ?? 'image/jpeg',
+      upsert: false,
+    });
+  if (error) return { ok: false, error: error.message };
+  const { data } = supabase.storage.from('events-public').getPublicUrl(path);
+  return { ok: true, publicUrl: data.publicUrl, path };
+}

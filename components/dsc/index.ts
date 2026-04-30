@@ -12,3 +12,4 @@ export { Avatar } from './Avatar';
 export { CarForm } from './CarForm';
 export { CarGallery } from './CarGallery';
 export { CarRow } from './CarRow';
+export { EventCard } from './EventCard';

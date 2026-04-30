@@ -1,5 +1,50 @@
 # Changelog
 
+## Phase 4 — Events & RSVP (2026-04-29)
+
+The events tab is no longer a placeholder. Members can browse upcoming and past events, RSVP, get a unique check-in token per event, and admins can create events end-to-end (form + hero image upload).
+
+**What works**
+
+- Events tab: Upcoming / Past toggle, refresh button, Admin sees a `New Event` shortcut.
+- `EventCard` component: hero image (with placeholder when missing), date/time, title, location, tier-required badge, RSVP indicator, going/capacity counter.
+- `/events/[id]`: hero, full description, date/time, capacity counter, tier gate copy, tappable location card that opens Apple Maps / Google Maps, RSVP / Cancel button, and a token display block (real QR rendering ships in Phase 5).
+- RSVP flow: `rsvpToEvent()` checks capacity client-side, generates a `qr_code_token` via `crypto.randomUUID()`, inserts an `event_rsvps` row with `status = 'going'` or `'waitlist'` accordingly. Cancel sets status to `'cancelled'` (soft delete so the QR token stays auditable).
+- Tier gating in the detail page: approved-only events visible to anyone approved+, drivers events RSVP-locked unless tier ≥ drivers, collector events locked to collector. Locked state shows clear "what tier you need" copy.
+- `/admin/events/new`: title, description, start/end time, location, address, capacity, tier, guest passes, hero image upload to the new `events-public` bucket.
+- Migration `0004_events_storage.sql` provisions the `events-public` bucket — public read, admin-only write — with RLS policies.
+- Home dashboard now renders the next 3 upcoming events instead of the placeholder.
+
+**What's stubbed**
+
+- **QR rendering** — the token is shown as text. Phase 5 swaps in `react-native-qrcode-svg` and adds the camera-based scanner.
+- **Push notifications** — 24-hour reminders are not wired. Needs `expo-notifications` setup + a scheduled job (Postgres pg_cron or an edge function on a cron trigger). Plan to do this with the points engine since both rely on event check-in.
+- **Calendar month-grid view** — the spec mentions a list/grid toggle. List view only for now; can add `react-native-calendars` later if the request comes up.
+- **Past event recaps** — placeholder copy. Photo galleries land in Phase 8.
+- **Admin event editing/cancelling** — only creation right now; editing existing events is a quick follow-up if needed.
+
+**What to test before moving on**
+
+1. Run `0004_events_storage.sql` in the Supabase SQL Editor. Verify with:
+   ```sql
+   select id, public from storage.buckets where id = 'events-public';
+   select policyname from pg_policies where tablename = 'objects' and policyname like 'events:%';
+   ```
+   Should return 1 bucket and 4 policies.
+2. As an admin, tap the **Events** tab → **New Event**. Fill it in, upload a hero, hit Create. You should land on the new event page.
+3. As a regular approved member (or your own admin account), tap **RSVP**. Card should flip to "You're going" with the token.
+4. Cancel the RSVP. Re-RSVP — capacity counter should update.
+5. Create an event with capacity = 1 and have two accounts RSVP. The second should land on the waitlist.
+6. Create a `tier_required = 'drivers'` event and confirm an approved (but unpaid) member sees the locked state.
+7. Past events: edit `starts_at` to a date in the past via SQL — `update events set starts_at = '2026-01-01' where id = '<id>';` — and confirm it moves to the Past tab.
+
+**Decisions made**
+
+- **`crypto.randomUUID()` for the event QR token** rather than a database-generated value. The token only has to be unique within `event_rsvps`; doing it client-side avoids an extra round-trip and keeps the migration simpler. The DB would still catch a duplicate via the unique index if there ever is one.
+- **Cancelling soft-deletes (`status = 'cancelled'`)** instead of hard-deleting the row. Keeps the QR history intact and lets us run "no-show" analytics later. Re-RSVP creates a new row.
+- **Capacity check is best-effort, client-side** — a determined user could race two RSVPs to fill the last seat. For Phase 4 that's acceptable since events are tens of people, not thousands. Tighten this with a Postgres trigger if the club ever runs an event with real demand.
+- **No `expo-notifications` yet** — adding it pulls in iOS push setup (APNs key, certificates) that's better done as one focused step after the points engine is in. Calling it out here so it doesn't get forgotten.
+
 ## Phase 3 — Application Flow (2026-04-29)
 
 The funnel from guest → pending → approved is fully wired in-app. Stripe is scaffolded but not deployed; until you add a Stripe key the app uses dev-skip mode.

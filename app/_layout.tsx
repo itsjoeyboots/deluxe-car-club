@@ -83,6 +83,18 @@ export default function RootLayout() {
             name="admin/index"
             options={{ headerShown: true, title: 'Admin' }}
           />
+          <Stack.Screen
+            name="admin/events/new"
+            options={{
+              headerShown: true,
+              title: 'New Event',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="events/[id]"
+            options={{ headerShown: true, title: 'Event' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

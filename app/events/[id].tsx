@@ -1,0 +1,351 @@
+import { useState } from 'react';
+import {
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import {
+  Button,
+  Card,
+  Divider,
+  Screen,
+  Text,
+} from '@/components/dsc';
+import { useAuth } from '@/lib/auth-context';
+import { useEvent, rsvpToEvent, cancelRsvp } from '@/hooks/use-events';
+import { colors, fonts, radii } from '@/lib/theme';
+import type { EventTier, MemberStatus, MemberTier } from '@/types/db';
+
+const TIER_LABEL: Record<EventTier, string> = {
+  approved: 'All approved members',
+  drivers: 'Drivers tier or above',
+  collector: 'Collector tier only',
+};
+
+export default function EventDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile, session } = useAuth();
+  const { event, loading, error, refresh } = useEvent(id);
+  const [busy, setBusy] = useState(false);
+
+  const userId = session?.user.id;
+  const status: MemberStatus = profile?.status ?? 'guest';
+  const tier: MemberTier = profile?.tier ?? 'none';
+
+  if (loading) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ title: 'Event', headerShown: true }} />
+        <Text tone="muted">Loading…</Text>
+      </Screen>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <Screen contentContainerStyle={{ gap: 14 }}>
+        <Stack.Screen options={{ title: 'Event', headerShown: true }} />
+        <Text variant="display">Event not found</Text>
+        <Text tone="muted">{error ?? 'It may have been cancelled or removed.'}</Text>
+        <Button label="Back" variant="secondary" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
+
+  const start = new Date(event.starts_at);
+  const end = event.ends_at ? new Date(event.ends_at) : null;
+  const dateLine = start.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timeLine = `${start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}${end ? ' – ' + end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''}`;
+
+  const cap = event.capacity;
+  const full = cap != null && event.going_count >= cap;
+  const isPast = start.getTime() < Date.now();
+  const tierAllowed = tierMeetsRequirement(event.tier_required, status, tier);
+
+  async function handleRsvp() {
+    if (!userId) {
+      showError('Not signed in', 'Sign in again before RSVP.');
+      return;
+    }
+    if (!event) return;
+    setBusy(true);
+    const result = await rsvpToEvent(
+      event.id,
+      userId,
+      event.capacity,
+      event.going_count,
+    );
+    setBusy(false);
+    if (!result.ok) {
+      console.error('[event] rsvp failed', result.error);
+      showError('Could not RSVP', result.error);
+      return;
+    }
+    refresh();
+  }
+
+  async function handleCancel() {
+    if (!event?.my_rsvp) return;
+    setBusy(true);
+    const result = await cancelRsvp(event.my_rsvp.id);
+    setBusy(false);
+    if (!result.ok) {
+      showError('Could not cancel', result.error ?? 'Unknown error');
+      return;
+    }
+    refresh();
+  }
+
+  function openMap() {
+    if (!event?.location_name && !event?.address) return;
+    const query = encodeURIComponent(
+      [event?.location_name, event?.address].filter(Boolean).join(', '),
+    );
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?q=${query}`
+        : `https://maps.google.com/?q=${query}`;
+    Linking.openURL(url).catch(() => {});
+  }
+
+  return (
+    <Screen contentContainerStyle={{ gap: 16 }}>
+      <Stack.Screen options={{ title: 'Event', headerShown: true }} />
+
+      {event.hero_image_url ? (
+        <Image
+          source={{ uri: event.hero_image_url }}
+          style={styles.hero}
+          contentFit="cover"
+          transition={150}
+        />
+      ) : (
+        <View style={[styles.hero, styles.heroPlaceholder]}>
+          <Text variant="eyebrow" tone="onDark">
+            Desert Social Club
+          </Text>
+        </View>
+      )}
+
+      <View>
+        <Text variant="eyebrow" tone="terracotta">
+          {dateLine}
+        </Text>
+        <Text variant="display" style={{ marginTop: 4 }}>
+          {event.title}
+        </Text>
+        <Text variant="bodyBold" tone="secondary" style={{ marginTop: 6 }}>
+          {timeLine}
+        </Text>
+      </View>
+
+      {event.location_name || event.address ? (
+        <Pressable onPress={openMap}>
+          <Card>
+            <Text variant="eyebrow" tone="muted">
+              Location
+            </Text>
+            {event.location_name ? (
+              <Text variant="bodyBold" style={{ marginTop: 4 }}>
+                {event.location_name}
+              </Text>
+            ) : null}
+            {event.address ? (
+              <Text variant="small" tone="muted" style={{ marginTop: 2 }}>
+                {event.address}
+              </Text>
+            ) : null}
+            <Text variant="caption" tone="terracotta" style={{ marginTop: 6 }}>
+              TAP TO OPEN IN MAPS
+            </Text>
+          </Card>
+        </Pressable>
+      ) : null}
+
+      {event.description ? (
+        <Card>
+          <Text variant="eyebrow" tone="muted">
+            About
+          </Text>
+          <Text style={{ marginTop: 6 }}>{event.description}</Text>
+        </Card>
+      ) : null}
+
+      <Card variant="inset">
+        <View style={styles.metaRow}>
+          <View>
+            <Text variant="caption" tone="muted">
+              ACCESS
+            </Text>
+            <Text variant="bodyBold" style={{ marginTop: 2 }}>
+              {TIER_LABEL[event.tier_required]}
+            </Text>
+          </View>
+          <View>
+            <Text variant="caption" tone="muted">
+              CAPACITY
+            </Text>
+            <Text variant="bodyBold" style={{ marginTop: 2 }}>
+              {cap == null
+                ? `${event.going_count} going`
+                : `${event.going_count}/${cap}${full ? ' · full' : ''}`}
+            </Text>
+          </View>
+          {event.guest_passes_allowed ? (
+            <View>
+              <Text variant="caption" tone="muted">
+                GUEST PASSES
+              </Text>
+              <Text variant="bodyBold" style={{ marginTop: 2 }}>
+                Allowed
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </Card>
+
+      <Divider />
+
+      {event.my_rsvp && event.my_rsvp.status !== 'cancelled' ? (
+        <View style={{ gap: 10 }}>
+          <Card style={{ borderLeftWidth: 4, borderLeftColor: colors.gold }}>
+            <Text variant="eyebrow" style={{ color: colors.gold }}>
+              {event.my_rsvp.status === 'waitlist'
+                ? 'You’re on the waitlist'
+                : 'You’re going'}
+            </Text>
+            <Text variant="bodyBold" style={{ marginTop: 6 }}>
+              Show this token at check-in
+            </Text>
+            <View style={styles.qrBox}>
+              <Text style={styles.qrText}>{event.my_rsvp.qr_code_token}</Text>
+            </View>
+            <Text variant="caption" tone="muted" style={{ marginTop: 8 }}>
+              QR rendering ships in Phase 5 — for now scanners can read this
+              token directly.
+            </Text>
+          </Card>
+          <Button
+            label={busy ? 'Cancelling…' : 'Cancel RSVP'}
+            variant="danger"
+            fullWidth
+            loading={busy}
+            onPress={handleCancel}
+          />
+        </View>
+      ) : isPast ? (
+        <Card variant="inset">
+          <Text variant="bodyBold">This event has happened.</Text>
+          <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
+            Recap photos will land here in Phase 8.
+          </Text>
+        </Card>
+      ) : !tierAllowed ? (
+        <Card variant="inset" style={{ borderLeftWidth: 4, borderLeftColor: colors.danger }}>
+          <Text variant="bodyBold">{TIER_LABEL[event.tier_required]} only.</Text>
+          <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
+            {gateCopy(event.tier_required, status, tier)}
+          </Text>
+        </Card>
+      ) : (
+        <Button
+          label={
+            busy
+              ? 'Holding spot…'
+              : full
+                ? 'Join Waitlist'
+                : 'RSVP'
+          }
+          size="lg"
+          fullWidth
+          loading={busy}
+          onPress={handleRsvp}
+        />
+      )}
+    </Screen>
+  );
+}
+
+function tierMeetsRequirement(
+  required: EventTier,
+  status: MemberStatus,
+  tier: MemberTier,
+): boolean {
+  // Must be at least approved to RSVP at all.
+  if (status !== 'approved' && status !== 'paid') return false;
+  if (required === 'approved') return true;
+  if (required === 'drivers')
+    return tier === 'drivers' || tier === 'collector';
+  if (required === 'collector') return tier === 'collector';
+  return false;
+}
+
+function gateCopy(
+  required: EventTier,
+  status: MemberStatus,
+  tier: MemberTier,
+): string {
+  if (status !== 'approved' && status !== 'paid') {
+    return 'Application approval required before you can RSVP.';
+  }
+  if (required === 'drivers' && tier === 'none') {
+    return 'Upgrade to the Drivers tier to RSVP.';
+  }
+  if (required === 'collector' && tier !== 'collector') {
+    return 'Collector tier only — rallies, garage hangs, and tech nights.';
+  }
+  return 'You don’t meet the tier requirement for this one.';
+}
+
+function showError(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: radii.lg,
+    backgroundColor: colors.ink,
+  },
+  heroPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 24,
+  },
+  qrBox: {
+    backgroundColor: colors.ink,
+    borderRadius: radii.md,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  qrText: {
+    color: colors.goldBright,
+    fontFamily: fonts.sansBold,
+    letterSpacing: 1.4,
+    fontSize: 12,
+  },
+});
