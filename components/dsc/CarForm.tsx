@@ -15,6 +15,7 @@ import type { Car, BuildStatus } from '@/types/db';
 import { Button } from './Button';
 import { Card } from './Card';
 import { CarGallery } from './CarGallery';
+import { ModsEditor } from './ModsEditor';
 import { Screen } from './Screen';
 import { Text } from './Text';
 import { TextField } from './TextField';
@@ -138,7 +139,7 @@ export function CarForm(props: Props) {
           );
           return;
         }
-        router.back();
+        router.replace({ pathname: '/cars/[id]/edit', params: { id: data.id } });
         return;
       }
 
@@ -264,6 +265,7 @@ export function CarForm(props: Props) {
         </View>
 
         {props.mode === 'edit' ? <CarGallery carId={props.carId} /> : null}
+        {props.mode === 'edit' ? <ModsEditor carId={props.carId} /> : null}
 
         <Card>
           <Text variant="eyebrow" tone="muted">

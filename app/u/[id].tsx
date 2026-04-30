@@ -232,6 +232,11 @@ function PublicCarCard({ car }: { car: CarWithPhotos }) {
   );
   const title = [car.year, car.make, car.model].filter(Boolean).join(' ');
   return (
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: '/cars/[id]', params: { id: car.id } })
+      }
+    >
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text variant="bodyBold" style={{ flex: 1 }} numberOfLines={1}>
@@ -270,6 +275,7 @@ function PublicCarCard({ car }: { car: CarWithPhotos }) {
         </ScrollView>
       ) : null}
     </Card>
+    </Pressable>
   );
 }
 

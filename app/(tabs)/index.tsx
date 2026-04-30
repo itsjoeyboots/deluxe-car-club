@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import {
@@ -26,6 +27,24 @@ import {
 } from '@/lib/profile-completeness';
 import { colors } from '@/lib/theme';
 
+type FeaturedBuild = {
+  id: string;
+  car_id: string;
+  content: string;
+  photo_urls: string[];
+  created_at: string;
+  car: {
+    id: string;
+    year: number | null;
+    make: string | null;
+    model: string | null;
+  } | null;
+  author: {
+    full_name: string | null;
+    profile_photo_url: string | null;
+  } | null;
+};
+
 export default function HomeScreen() {
   const { profile, session } = useAuth();
   const { cars } = useMyCars();
@@ -34,6 +53,7 @@ export default function HomeScreen() {
     approved: 0,
     paid: 0,
   });
+  const [featured, setFeatured] = useState<FeaturedBuild[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -48,6 +68,25 @@ export default function HomeScreen() {
       active = false;
     };
   }, [profile?.status]);
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('build_updates')
+        .select(
+          'id, car_id, content, photo_urls, created_at, car:cars!build_updates_car_id_fkey(id, year, make, model), author:profiles!build_updates_user_id_fkey(full_name, profile_photo_url)',
+        )
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (!active || error || !data) return;
+      setFeatured(data as unknown as FeaturedBuild[]);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const displayName =
     profile?.full_name?.split(' ')[0] ??
@@ -223,12 +262,25 @@ export default function HomeScreen() {
       </Section>
 
       <Section title="Featured Builds">
-        <Card variant="inset">
-          <Text variant="small" tone="muted">
-            Member builds will rotate through here. Add your car from the
-            Profile tab to be eligible.
-          </Text>
-        </Card>
+        {featured.length === 0 ? (
+          <Card variant="inset">
+            <Text variant="small" tone="muted">
+              Member builds will rotate through here. Post a build update from
+              your car page to be eligible.
+            </Text>
+          </Card>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -2 }}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}
+          >
+            {featured.map((b) => (
+              <FeaturedBuildCard key={b.id} build={b} />
+            ))}
+          </ScrollView>
+        )}
       </Section>
 
       <Section title="Partner Deals">
@@ -262,6 +314,55 @@ function Section({
       </Text>
       {children}
     </View>
+  );
+}
+
+function FeaturedBuildCard({ build }: { build: FeaturedBuild }) {
+  const cover = build.photo_urls?.[0];
+  const title = build.car
+    ? [build.car.year, build.car.make, build.car.model].filter(Boolean).join(' ')
+    : 'Untitled';
+  return (
+    <Pressable
+      onPress={() =>
+        build.car
+          ? router.push({
+              pathname: '/cars/[id]',
+              params: { id: build.car.id },
+            })
+          : null
+      }
+      style={({ pressed }) => [
+        featuredStyles.card,
+        { opacity: pressed ? 0.9 : 1 },
+      ]}
+    >
+      {cover ? (
+        <Image
+          source={{ uri: cover }}
+          style={featuredStyles.cover}
+          contentFit="cover"
+          transition={120}
+        />
+      ) : (
+        <View style={[featuredStyles.cover, featuredStyles.coverPlaceholder]}>
+          <Text variant="caption" tone="onDark">
+            DCC
+          </Text>
+        </View>
+      )}
+      <View style={featuredStyles.body}>
+        <Text variant="bodyBold" numberOfLines={1}>
+          {title}
+        </Text>
+        <Text variant="caption" tone="muted" numberOfLines={1}>
+          {build.author?.full_name ?? 'Member'}
+        </Text>
+        <Text variant="small" tone="secondary" numberOfLines={2} style={{ marginTop: 4 }}>
+          {build.content}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -301,5 +402,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+});
+
+const featuredStyles = StyleSheet.create({
+  card: {
+    width: 240,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cover: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    backgroundColor: colors.ink,
+  },
+  coverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    padding: 12,
   },
 });

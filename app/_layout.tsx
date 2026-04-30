@@ -64,7 +64,11 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
-            name="cars/[id]"
+            name="cars/[id]/index"
+            options={{ headerShown: true, title: 'Car' }}
+          />
+          <Stack.Screen
+            name="cars/[id]/edit"
             options={{ headerShown: true, title: 'Edit Car' }}
           />
           <Stack.Screen

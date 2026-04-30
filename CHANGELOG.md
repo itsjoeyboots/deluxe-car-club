@@ -1,5 +1,61 @@
 # Changelog
 
+## Phase 8 — Build Galleries (2026-04-30)
+
+The cars-tab social loop. Mods, build update timeline with photos, likes, comments, +25 points per update (weekly cap), and a real Featured Builds carousel on home.
+
+**What works**
+
+- Cars routing split: `/cars/[id]` is now a **public viewer** for any approved+ member; `/cars/[id]/edit` is owner-only and contains the existing `CarForm` + `CarGallery` + the new `ModsEditor`.
+- Public viewer page renders: cover hero, title + status, owner card (taps to `/u/[id]`), photo gallery strip, mods grouped by category, build update timeline with likes + comments.
+- `ModsEditor`: per-category pill picker (engine / suspension / exterior / interior / wheels / audio / other), inline add field, remove × button. Calls `add_mod` / `delete_mod` RPCs.
+- Build update composer (owner only) on the viewer: caption + multi-photo upload using existing `pickAndUploadCarPhoto`. Calls `post_build_update` RPC.
+- `BuildUpdateCard`: caption + photo strip + heart toggle (count from `toggle_build_update_like` RPC) + comment expander with author avatars and inline add-comment input.
+- Migration `0008_builds.sql` adds:
+  - `post_build_update(car_id, content, photo_urls)` — owner-checked, awards +25 points if no other update by user in the last 7 days (matches the spec's weekly cap).
+  - `add_mod(car_id, category, description)` and `delete_mod(mod_id)` — owner-checked.
+  - `toggle_build_update_like(update_id)` — idempotent, returns the new like count for instant UI updates.
+- Home screen Featured Builds: real horizontal carousel of the 5 most recent build updates, each tile linking to its car viewer.
+- `/u/[id]` car cards are now tappable and route to the new viewer.
+- After creating a car, the form deep-links to `/cars/{id}/edit` so the user lands ready to add photos + mods immediately.
+
+**What's stubbed**
+
+- **Featured Build of the Month** admin pick (linked to the 25,000-pt reward) — Phase 11 admin polish. The home carousel uses recency for now.
+- **Build update editing/deleting** — owners can post but not edit/delete their own update. Easy follow-up: add `update_build_update` and `delete_build_update` RPCs + the UI.
+- **@-mention notifications** in comments — out of scope for Phase 8. Lands with the messaging/notification work in Phase 10.
+- **Push notifications when someone likes/comments on your update** — same; deferred with the rest of push.
+
+**What to test before moving on**
+
+1. Run `0008_builds.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select proname from pg_proc
+    where proname in ('post_build_update', 'add_mod', 'delete_mod', 'toggle_build_update_like');
+   ```
+   Should return 4 rows.
+2. From your Profile tab, tap your car → you'll land on the new viewer.
+3. Tap **Edit Car** at the top → confirm photos + mods editor render. Add a couple of mods across different categories.
+4. Back on the viewer, scroll to **Build Timeline**. Type a caption, optionally add a photo, **Post Update**.
+5. The update should appear at the top of the timeline. SQL spot-check:
+   ```sql
+   select reason, amount from points_transactions
+    where user_id = '<you>' and reason = 'build_update' order by created_at desc;
+   ```
+   First post should give +25; a second post within 7 days should *not* add another row (weekly cap).
+6. Tap the heart → count increments and stays terracotta on next refresh.
+7. Tap the comment count → write a comment → it appears with your avatar.
+8. Visit Home — the Featured Builds carousel should now show the build update you just posted.
+9. Visit `/u/<your-id>` — your car cards should now be tappable and route to the public viewer.
+
+**Decisions made**
+
+- **Two-route split (`/cars/[id]` viewer vs `/cars/[id]/edit` editor)** instead of a "self vs other" toggle on a single page. Cleaner mental model, easier to wire deep links from search results / featured carousels later, and the URL itself communicates whether you're editing.
+- **`SECURITY DEFINER` RPCs for the writes** rather than direct INSERT statements with RLS. The points-on-build-update logic + walk-up RSVPs need server-side trust; keeping the pattern consistent with check-in / approval RPCs.
+- **Weekly cap is implemented as `count(...) where created_at > now() - interval '7 days'`** rather than a fancy points-eligibility table. Simple, correct enough, and reads like the spec ("max once per week").
+- **Comments don't paginate yet.** Threads will be small at the club's scale; revisit if a single update ever crosses ~50 comments.
+- **Featured Builds carousel uses recency** for the v1. The "Featured Build of the Month" admin pick is documented in stubs above; trivial to swap once the admin tool exists.
+
 ## Rebrand — Deluxe Car Club (2026-04-30)
 
 The app is now **Deluxe Car Club** (DCC). Visual identity flipped from desert/cream/terracotta to dark luxury matte black with a turquoise accent (lifted from the DCC logo). Internal package name (`dsc-app`) is intentionally left alone.

@@ -13,7 +13,14 @@ export { CarForm } from './CarForm';
 export { CarGallery } from './CarGallery';
 export { CarRow } from './CarRow';
 export { AchievementsGrid } from './AchievementsGrid';
+export {
+  BuildUpdateCard,
+  type BuildUpdateWithMeta,
+  type CommentRow,
+} from './BuildUpdateCard';
 export { EventCard } from './EventCard';
 export { MemberCard } from './MemberCard';
 export { MemberRow } from './MemberRow';
+export { ModsEditor } from './ModsEditor';
+export { ModsList } from './ModsList';
 export { QRCode } from './QRCode';
