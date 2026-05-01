@@ -131,6 +131,14 @@ export default function RootLayout() {
             name="admin/partners/[id]/edit"
             options={{ headerShown: true, title: 'Edit Partner' }}
           />
+          <Stack.Screen
+            name="inbox/index"
+            options={{ headerShown: true, title: 'Messages' }}
+          />
+          <Stack.Screen
+            name="inbox/[id]"
+            options={{ headerShown: true, title: 'Thread' }}
+          />
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>

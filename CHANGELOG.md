@@ -1,5 +1,59 @@
 # Changelog
 
+## Phase 10 — Messaging (2026-04-30)
+
+Real-time direct messages between paid members (and admins). Inbox + threaded chat, live delivery via Supabase Realtime, mark-read on focus, unread badge on the Profile tab.
+
+**What works**
+
+- `/inbox` — list of conversations from `get_inbox()` RPC. Each row shows avatar, name, last message preview ("You: …" prefix when sent by viewer), timestamp, unread count badge (terracotta turquoise pill).
+- `/inbox/[id]` — threaded chat with message bubbles (sent right in turquoise with dark text, received left in raised dark surface), peer header card that taps to `/u/[id]`, composer at bottom. Auto-scrolls to latest. Marks the thread read on focus + after each new message lands.
+- `useInbox()` hook subscribes via Supabase Realtime to any `messages` row where the viewer is sender or recipient and re-fetches the inbox.
+- `useThread(peerId)` loads the pair's history then subscribes to live INSERT/UPDATE for the same pair and appends in place.
+- Profile tab gets a **Messages** button with unread count (`Messages · 3 unread` style).
+- `/u/[id]` shows a **Message** button when the viewer is a paid member or admin and they're not viewing their own profile.
+- Migration `0010_messaging.sql`:
+  - Replaces the old "paid can send" RLS with "paid OR admin can send" so admins can moderate and you can test in dev.
+  - `get_inbox()` SECURITY DEFINER RPC — uses `distinct on (peer_id)` over a unioned-by-direction CTE, joined with profile + per-peer unread count.
+  - `mark_thread_read(peer_id)` RPC sets `read_at = now()` for unread incoming messages from that peer.
+  - Adds `messages` to the `supabase_realtime` publication so postgres_changes events fire.
+- Time stamps render only when there's a > 5-min gap to the next message — keeps dense chats clean.
+
+**What's stubbed**
+
+- **Typing indicators / presence** — not wired. Supabase Realtime supports presence channels; can add later as a small UX polish.
+- **Attachments (photos in DMs)** — text-only for now. The composer has no file picker; use the build update / car gallery flows for shared photos.
+- **Group threads** — explicitly out of scope per spec ("DMs"). Schema would need a `conversations` table.
+- **Push notifications on new message** — deferred with the rest of `expo-notifications` work.
+- **Admin "moderate threads" view** — admins can read everything via `is_admin()` once we add that read policy, but there's no dedicated UI yet (Phase 11 polish).
+- **Block / mute** — not implemented. Add a `blocked_users` table when needed.
+
+**What to test before moving on**
+
+1. Run `0010_messaging.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select proname from pg_proc where proname in ('get_inbox', 'mark_thread_read'); -- 2 rows
+   select pubname, tablename from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'messages';                  -- 1 row
+   ```
+   If you get an error like `relation "messages" is already member of publication`, the publication line is idempotent — safe to ignore.
+2. Reload the app at http://localhost:8082. As your admin account, open the **Directory** tab → tap another approved member → tap **Message**.
+3. Send a couple of messages. Bubbles should align right (turquoise). On a second browser/incognito window signed in as another approved+ user (you'll need to make them admin too if they're not paid), open `/inbox/<your-id>` — messages should appear without a manual refresh thanks to Realtime.
+4. Profile tab — **Messages** button should show `Messages · 1 unread` (or whatever the recipient sees) and clear once they open the thread.
+5. Verify the read receipt:
+   ```sql
+   select sender_id, recipient_id, content, read_at from messages order by created_at desc;
+   ```
+   Once the recipient opens the thread, their incoming rows should have `read_at` populated.
+
+**Decisions made**
+
+- **Allow admins to send too** — the spec is "paid members can DM," but locking out admins makes testing in dev brutal. The RLS still enforces "paid OR admin." When real paid members exist, this is a no-op for them.
+- **`get_inbox` as a SECURITY DEFINER RPC** instead of a heroic client-side query. Postgres `distinct on` with a UNIONed CTE is exactly what this asks for — easier to maintain than re-deriving the same result from two raw queries in the hook.
+- **Supabase Realtime via the global publication** rather than a custom broadcast channel. Postgres-level events guarantee we don't miss an insert that happened off-platform (e.g. an admin inserting a message via SQL during moderation).
+- **No optimistic message append.** `sendMessage` inserts then appends locally only if the realtime echo hasn't already added it (idempotent via `idsRef`). Keeps the order and ID consistent without juggling temp IDs.
+- **Bubbles render time only when there's a > 5-min gap to the next message.** Saves vertical space in dense exchanges and matches what every modern chat app does.
+
 ## Phase 9 — Marketplace / Partner Shops (2026-04-30)
 
 The Marketplace tab is no longer a placeholder. Members browse partner shops, see member discounts, and tap **Show My Card** to display their member QR for in-store verification. Founders can create, edit, feature, and delete partners. Members can suggest new partners.

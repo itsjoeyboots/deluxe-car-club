@@ -221,6 +221,16 @@ export default function PublicProfileScreen() {
             onPress={() => router.push('/profile/edit')}
           />
         </View>
+      ) : viewer?.status === 'paid' || viewer?.role === 'admin' ? (
+        <View style={{ marginTop: 20 }}>
+          <Button
+            label="Message"
+            fullWidth
+            onPress={() =>
+              router.push({ pathname: '/inbox/[id]', params: { id: data.id } })
+            }
+          />
+        </View>
       ) : null}
     </Screen>
   );
