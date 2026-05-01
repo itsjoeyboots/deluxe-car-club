@@ -46,8 +46,11 @@ export function useInbox() {
   // Re-fetch when any message involving me hits the table.
   useEffect(() => {
     if (!userId || !isSupabaseConfigured) return;
+    // Unique channel name per mount — guards against Strict Mode /
+    // hot-reload remounts reusing an already-subscribed channel.
+    const channelName = `inbox-${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel(`inbox-${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -120,8 +123,9 @@ export function useThread(peerId: string | undefined) {
   // Realtime: subscribe to inserts in either direction and append.
   useEffect(() => {
     if (!peerId || !userId || !isSupabaseConfigured) return;
+    const channelName = `thread-${userId}-${peerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel(`thread-${userId}-${peerId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
