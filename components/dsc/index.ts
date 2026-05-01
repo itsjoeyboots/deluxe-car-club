@@ -23,4 +23,6 @@ export { MemberCard } from './MemberCard';
 export { MemberRow } from './MemberRow';
 export { ModsEditor } from './ModsEditor';
 export { ModsList } from './ModsList';
+export { PartnerCard } from './PartnerCard';
+export { PartnerForm } from './PartnerForm';
 export { QRCode } from './QRCode';

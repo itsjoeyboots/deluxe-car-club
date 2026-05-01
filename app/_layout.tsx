@@ -115,6 +115,22 @@ export default function RootLayout() {
             name="u/[id]"
             options={{ headerShown: true, title: 'Member' }}
           />
+          <Stack.Screen
+            name="partners/[id]"
+            options={{ headerShown: true, title: 'Partner' }}
+          />
+          <Stack.Screen
+            name="admin/partners/new"
+            options={{
+              headerShown: true,
+              title: 'New Partner',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="admin/partners/[id]/edit"
+            options={{ headerShown: true, title: 'Edit Partner' }}
+          />
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>

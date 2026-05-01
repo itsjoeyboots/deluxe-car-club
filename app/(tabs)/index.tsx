@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useMyCars } from '@/hooks/use-my-cars';
 import { useEvents } from '@/hooks/use-events';
+import type { Partner } from '@/types/db';
 import { MEMBERSHIP } from '@/lib/membership';
 import {
   profileChecklist,
@@ -54,6 +55,7 @@ export default function HomeScreen() {
     paid: 0,
   });
   const [featured, setFeatured] = useState<FeaturedBuild[]>([]);
+  const [featuredPartners, setFeaturedPartners] = useState<Partner[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -82,6 +84,24 @@ export default function HomeScreen() {
         .limit(5);
       if (!active || error || !data) return;
       setFeatured(data as unknown as FeaturedBuild[]);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('partners')
+        .select('*')
+        .eq('featured', true)
+        .order('name', { ascending: true })
+        .limit(6);
+      if (!active || error || !data) return;
+      setFeaturedPartners(data as Partner[]);
     })();
     return () => {
       active = false;
@@ -284,11 +304,24 @@ export default function HomeScreen() {
       </Section>
 
       <Section title="Partner Deals">
-        <Card variant="inset">
-          <Text variant="small" tone="muted">
-            DCC partner shops, discounts, and tour days will live here.
-          </Text>
-        </Card>
+        {featuredPartners.length === 0 ? (
+          <Card variant="inset">
+            <Text variant="small" tone="muted">
+              DCC partner shops, discounts, and tour days will live here.
+            </Text>
+          </Card>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -2 }}
+            contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}
+          >
+            {featuredPartners.map((p) => (
+              <FeaturedPartnerCard key={p.id} partner={p} />
+            ))}
+          </ScrollView>
+        )}
       </Section>
 
       <View style={{ alignItems: 'center', paddingTop: 12 }}>
@@ -314,6 +347,50 @@ function Section({
       </Text>
       {children}
     </View>
+  );
+}
+
+function FeaturedPartnerCard({ partner }: { partner: Partner }) {
+  return (
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: '/partners/[id]', params: { id: partner.id } })
+      }
+      style={({ pressed }) => [
+        featuredStyles.card,
+        { opacity: pressed ? 0.9 : 1 },
+      ]}
+    >
+      {partner.hero_image_url ? (
+        <Image
+          source={{ uri: partner.hero_image_url }}
+          style={featuredStyles.cover}
+          contentFit="cover"
+          transition={120}
+        />
+      ) : (
+        <View style={[featuredStyles.cover, featuredStyles.coverPlaceholder]}>
+          <Text variant="caption" tone="onDark">
+            {partner.name.slice(0, 1).toUpperCase()}
+          </Text>
+        </View>
+      )}
+      <View style={featuredStyles.body}>
+        <Text variant="bodyBold" numberOfLines={1}>
+          {partner.name}
+        </Text>
+        {partner.location_name ? (
+          <Text variant="caption" tone="muted" numberOfLines={1}>
+            {partner.location_name}
+          </Text>
+        ) : null}
+        {partner.discount_terms ? (
+          <Text variant="small" tone="terracotta" numberOfLines={2} style={{ marginTop: 4 }}>
+            {partner.discount_terms}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 

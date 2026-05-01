@@ -145,6 +145,16 @@ export interface Partner {
   created_at: string;
 }
 
+export interface PartnerSuggestion {
+  id: string;
+  suggested_by: string;
+  name: string;
+  why: string | null;
+  contact_info: string | null;
+  reviewed: boolean;
+  created_at: string;
+}
+
 export interface PointsTransaction {
   id: string;
   user_id: string;

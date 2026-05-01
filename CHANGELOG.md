@@ -1,5 +1,57 @@
 # Changelog
 
+## Phase 9 — Marketplace / Partner Shops (2026-04-30)
+
+The Marketplace tab is no longer a placeholder. Members browse partner shops, see member discounts, and tap **Show My Card** to display their member QR for in-store verification. Founders can create, edit, feature, and delete partners. Members can suggest new partners.
+
+**What works**
+
+- Marketplace tab: search bar, scrollable category pill row (10 categories), live count, list of `PartnerCard` rows with hero image, name, location, discount line, and category tags. Featured partners float to the top.
+- `PartnerCard` shows a `FEATURED` pill when `partners.featured = true`.
+- `/partners/[id]` detail: hero, name, featured badge, service tags, **Member Discount** call-out, About copy, tappable Location card (opens Apple/Google Maps), Contact rows that open `https:` / `mailto:` / `tel:` links.
+- **Show My Card** button on the partner detail opens a modal with the existing `MemberCard` (avatar, app number, tier, QR). Shop scans the QR to verify membership.
+- `/admin/partners/new` and `/admin/partners/[id]/edit` use a shared `PartnerForm` (hero upload to the new `partner-images` bucket, multi-select category pills, dynamic key/value contact rows, featured checkbox).
+- "Suggest a Partner" inline form on the Marketplace tab — approved members write name/why/contact and the row lands in `partner_suggestions` for admin triage.
+- Home dashboard's Partner Deals carousel pulls real `partners.featured = true` rows; tap routes to `/partners/[id]`.
+- Migration `0009_partners.sql`:
+  - `partner-images` storage bucket + RLS (public read, admin write).
+  - `partner_suggestions` table with RLS — approved members insert/select their own; admins read + update.
+- `lib/uploads.ts` adds `pickAndUploadPartnerHero`.
+- `hooks/use-partners.ts` exports `usePartners`, `usePartner`, the canonical `PARTNER_CATEGORIES` list, and `PARTNER_CATEGORY_LABEL` map.
+
+**What's stubbed**
+
+- **Admin partner suggestions queue UI** — the table is created and members can submit; admins read it via SQL today. A `/admin/partners/suggestions` view ships with the rest of the admin polish work in Phase 11.
+- **Map view** of all partners on a single map — out of scope. Per-partner detail still opens the system maps app.
+- **"Show your card" scan-by-shop** flow — DCC's own admin scanner already accepts member QR codes via the `checkin_member` RPC (Phase 5); shops would need their own staff app for the same flow. Not in scope for Phase 9.
+- **Partner ratings / reviews** — explicitly out of scope. The spec calls out that this is a discount/partner directory, not peer reviews.
+
+**What to test before moving on**
+
+1. Run `0009_partners.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select id, public from storage.buckets where id = 'partner-images';            -- 1 row
+   select to_regclass('public.partner_suggestions');                                -- not null
+   select policyname from pg_policies where tablename = 'partner_suggestions';      -- 4 rows
+   ```
+2. Reload the app at http://localhost:8082.
+3. As an admin, tap the **Marketplace** tab → **New Partner**. Upload a hero, fill in name + location + a discount line, pick 2-3 categories, add `instagram` and `phone` contact rows, toggle **Featured**, save.
+4. You should land on the partner detail page. The hero, discount call-out, location card, contact rows all render dark-themed.
+5. Tap **Show My Card** — the modal pops up with your DCC member card and QR (assuming you're an approved member).
+6. Back to Marketplace. The featured partner should be at the top with a `FEATURED` pill. Filter by one of its categories — only matches show. Search by name.
+7. Sign in as a non-admin approved member, scroll to the bottom of Marketplace, and submit a partner suggestion. Check the database:
+   ```sql
+   select * from partner_suggestions order by created_at desc;
+   ```
+8. Home tab — the Partner Deals carousel should show your featured partner; tap it to land back on `/partners/[id]`.
+
+**Decisions made**
+
+- **Categories live as a const array in `lib`** (`PARTNER_CATEGORIES`) rather than a Postgres enum. Partners are admin-curated and the category list will drift faster than schema migrations are worth; the column stays `text[]` and we read/write the const list in app code.
+- **`contact_info` is jsonb**, edited via dynamic key/value rows in the admin form. Keeps the schema flexible (any partner-specific channels) without forcing a migration when a shop has only Instagram or only a website.
+- **Show My Card opens a modal**, not a separate route. The card is already rendered as a self-contained `MemberCard` component, so reusing it inside a modal is two extra `View`s and avoids navigation churn.
+- **Suggestions are a separate table**, not just `partners` rows with a `pending` flag. Lets the admin partner table stay strictly published-content while keeping a reviewable inbox of nominations.
+
 ## Phase 8 — Build Galleries (2026-04-30)
 
 The cars-tab social loop. Mods, build update timeline with photos, likes, comments, +25 points per update (weekly cap), and a real Featured Builds carousel on home.
