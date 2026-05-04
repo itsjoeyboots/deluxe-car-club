@@ -336,6 +336,18 @@ export default function EventDetailScreen() {
             Admin actions
           </Text>
           <Button
+            label="Edit Event"
+            variant="secondary"
+            fullWidth
+            onPress={() =>
+              router.push({
+                pathname: '/admin/events/[id]/edit',
+                params: { id: event.id },
+              })
+            }
+            disabled={busy}
+          />
+          <Button
             label="Scan Attendees"
             fullWidth
             onPress={() =>

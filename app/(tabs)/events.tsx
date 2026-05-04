@@ -6,6 +6,7 @@ import {
   Card,
   EventCard,
   Screen,
+  SkeletonCard,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
@@ -72,11 +73,10 @@ export default function EventsScreen() {
       ) : null}
 
       {loading ? (
-        <Card variant="inset">
-          <Text variant="small" tone="muted">
-            Loading events…
-          </Text>
-        </Card>
+        <View style={{ gap: 14 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
       ) : events.length === 0 ? (
         <Card variant="inset">
           <Text variant="bodyBold">

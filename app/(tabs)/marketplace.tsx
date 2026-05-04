@@ -15,6 +15,7 @@ import {
   Divider,
   PartnerCard,
   Screen,
+  SkeletonCard,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
@@ -104,9 +105,10 @@ export default function MarketplaceScreen() {
           <Text tone="muted">Couldn{'’'}t load partners: {error}</Text>
         </Card>
       ) : loading ? (
-        <Card variant="inset">
-          <Text tone="muted">Loading shops…</Text>
-        </Card>
+        <View style={{ gap: 14 }}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
       ) : partners.length === 0 ? (
         <Card variant="inset">
           <Text variant="bodyBold">

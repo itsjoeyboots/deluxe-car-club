@@ -40,9 +40,31 @@ export interface Profile {
   app_number: number | null;
   points_balance: number;
   member_qr_token: string;
-  notification_prefs: Record<string, unknown>;
+  notification_prefs: NotificationPrefs;
+  privacy_prefs: PrivacyPrefs;
+  expo_push_token: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type NotificationType =
+  | 'message'
+  | 'application_status'
+  | 'achievement'
+  | 'build_like'
+  | 'build_comment'
+  | 'event_new'
+  | 'event_reminder'
+  | 'partner_new'
+  | 'announcement'
+  | 'points_milestone';
+
+export type NotificationPrefs = Partial<Record<NotificationType, boolean>>;
+
+export interface PrivacyPrefs {
+  show_phone?: boolean;
+  show_email?: boolean;
+  hide_instagram?: boolean;
 }
 
 export interface Application {
@@ -96,6 +118,8 @@ export interface BuildUpdate {
   user_id: string;
   content: string;
   photo_urls: string[];
+  is_featured: boolean;
+  featured_at: string | null;
   created_at: string;
 }
 

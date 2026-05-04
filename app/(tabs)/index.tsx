@@ -80,6 +80,8 @@ export default function HomeScreen() {
         .select(
           'id, car_id, content, photo_urls, created_at, car:cars!build_updates_car_id_fkey(id, year, make, model), author:profiles!build_updates_user_id_fkey(full_name, profile_photo_url)',
         )
+        .order('is_featured', { ascending: false })
+        .order('featured_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(5);
       if (!active || error || !data) return;

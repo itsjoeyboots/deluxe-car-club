@@ -100,10 +100,37 @@ When a paid spot opens, approved applicants on the waitlist are notified in prio
 | 8. Build galleries (cars, photos, timelines, likes/comments) | ⏭️ Next |
 | 9. Marketplace (partner directory, member discount card) | ⏭️ |
 | 10. Messaging (real-time DMs, paid-tier only) | ⏭️ |
-| 11. Admin panel (full queue, members, events, scanner, analytics) | ⏭️ |
-| 12. Polish (loading, empty, error, animations, a11y) | ⏭️ |
+| 8. Build galleries (cars, photos, timelines, likes/comments) | ✅ Done |
+| 9. Marketplace (partner directory, member discount card) | ✅ Done |
+| 10. Messaging (real-time DMs, paid-tier only) | ✅ Done |
+| 11. Admin panel (queue, members, points, builds, analytics, announcements) | ✅ Done |
+| 12. Polish (skeletons, edit events, redemptions, privacy) | ✅ Done |
+| 13. Notifications (inbox, realtime, prefs, broadcast, browser pings) | ✅ Done |
 
 See `CHANGELOG.md` for what's actually shipped.
+
+## Deploying the web build to Netlify
+
+The web build is a single-page React Native Web bundle. The repo ships a `netlify.toml` that handles the SPA fallback + caching headers.
+
+1. **Push this repo to GitHub** if you haven't already.
+2. In Netlify, **Add new site → Import from Git** and pick the repo.
+3. **Base directory**: set to `dsc-app` (this folder). Netlify will read `netlify.toml` from inside it.
+4. Build command and publish directory are picked up from `netlify.toml` automatically (`npm run build:web` → `dist`).
+5. Add the env vars under **Site settings → Build & deploy → Environment**:
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+   - `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` *(optional — leaves the app in dev-skip mode for the application fee)*
+6. **Deploy site** → wait for the first build (~3–5 min) → connect your custom domain under **Domain management**.
+
+Local equivalent if you want to test the production bundle:
+
+```bash
+npm run build:web         # outputs dist/
+npx serve dist            # local static server on http://localhost:3000
+```
+
+> **Note on Supabase URL allow-list**: once your Netlify URL is live, add it to **Supabase → Authentication → URL Configuration → Site URL** (and Redirect URLs) so magic-link emails route back to the deployed domain.
 
 ## Brand quick reference
 

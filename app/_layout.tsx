@@ -96,8 +96,40 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="admin/events/[id]/edit"
+            options={{ headerShown: true, title: 'Edit Event' }}
+          />
+          <Stack.Screen
             name="admin/scan"
             options={{ headerShown: true, title: 'Scanner' }}
+          />
+          <Stack.Screen
+            name="admin/members"
+            options={{ headerShown: true, title: 'Members' }}
+          />
+          <Stack.Screen
+            name="admin/points"
+            options={{ headerShown: true, title: 'Points' }}
+          />
+          <Stack.Screen
+            name="admin/builds"
+            options={{ headerShown: true, title: 'Featured Builds' }}
+          />
+          <Stack.Screen
+            name="admin/analytics"
+            options={{ headerShown: true, title: 'Analytics' }}
+          />
+          <Stack.Screen
+            name="admin/redemptions"
+            options={{ headerShown: true, title: 'Redemptions' }}
+          />
+          <Stack.Screen
+            name="admin/announcements"
+            options={{ headerShown: true, title: 'Announcements' }}
+          />
+          <Stack.Screen
+            name="admin/partners/suggestions"
+            options={{ headerShown: true, title: 'Partner Suggestions' }}
           />
           <Stack.Screen
             name="events/[id]"
@@ -138,6 +170,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="inbox/[id]"
             options={{ headerShown: true, title: 'Thread' }}
+          />
+          <Stack.Screen
+            name="notifications/index"
+            options={{ headerShown: true, title: 'Notifications' }}
           />
         </Stack>
         <StatusBar style="light" />

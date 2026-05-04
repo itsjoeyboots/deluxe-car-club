@@ -18,11 +18,11 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { colors, fonts, radii } from '@/lib/theme';
 import type { AchievementKey } from '@/lib/achievements';
-import type { Profile, Car, CarPhoto } from '@/types/db';
+import type { Profile, Car, CarPhoto, PrivacyPrefs } from '@/types/db';
 
 const SELECT = `
-  id, full_name, profile_photo_url, instagram_handle, city, tier, status, role,
-  app_number, approved_at, points_balance,
+  id, full_name, email, phone, profile_photo_url, instagram_handle, city, tier, status, role,
+  app_number, approved_at, points_balance, privacy_prefs,
   cars(id, year, make, model, nickname, status, is_primary, car_photos(url, display_order))
 ` as const;
 
@@ -37,6 +37,8 @@ type Raw = Pick<
   Profile,
   | 'id'
   | 'full_name'
+  | 'email'
+  | 'phone'
   | 'profile_photo_url'
   | 'instagram_handle'
   | 'city'
@@ -46,6 +48,7 @@ type Raw = Pick<
   | 'app_number'
   | 'approved_at'
   | 'points_balance'
+  | 'privacy_prefs'
 > & { cars: CarWithPhotos[] };
 
 export default function PublicProfileScreen() {
@@ -179,21 +182,71 @@ export default function PublicProfileScreen() {
         ) : null}
       </View>
 
-      {data.instagram_handle ? (
-        <Pressable onPress={openInstagram}>
-          <Card>
-            <Text variant="eyebrow" tone="muted">
-              Instagram
-            </Text>
-            <Text variant="bodyBold" tone="terracotta" style={{ marginTop: 4 }}>
-              @{data.instagram_handle.replace(/^@/, '')}
-            </Text>
-            <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
-              TAP TO OPEN
-            </Text>
-          </Card>
-        </Pressable>
-      ) : null}
+      {(() => {
+        const prefs: PrivacyPrefs = data.privacy_prefs ?? {};
+        const igVisible =
+          !!data.instagram_handle && !prefs.hide_instagram;
+        const phoneVisible = !!data.phone && !!prefs.show_phone;
+        const emailVisible = !!data.email && !!prefs.show_email;
+        if (!igVisible && !phoneVisible && !emailVisible) return null;
+        return (
+          <View style={{ gap: 10 }}>
+            {igVisible ? (
+              <Pressable onPress={openInstagram}>
+                <Card>
+                  <Text variant="eyebrow" tone="muted">
+                    Instagram
+                  </Text>
+                  <Text variant="bodyBold" tone="terracotta" style={{ marginTop: 4 }}>
+                    @{data.instagram_handle!.replace(/^@/, '')}
+                  </Text>
+                  <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
+                    TAP TO OPEN
+                  </Text>
+                </Card>
+              </Pressable>
+            ) : null}
+            {phoneVisible ? (
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(`tel:${data.phone!.replace(/[^+0-9]/g, '')}`).catch(
+                    () => {},
+                  )
+                }
+              >
+                <Card>
+                  <Text variant="eyebrow" tone="muted">
+                    Phone
+                  </Text>
+                  <Text variant="bodyBold" tone="terracotta" style={{ marginTop: 4 }}>
+                    {data.phone}
+                  </Text>
+                  <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
+                    TAP TO CALL
+                  </Text>
+                </Card>
+              </Pressable>
+            ) : null}
+            {emailVisible ? (
+              <Pressable
+                onPress={() => Linking.openURL(`mailto:${data.email!}`).catch(() => {})}
+              >
+                <Card>
+                  <Text variant="eyebrow" tone="muted">
+                    Email
+                  </Text>
+                  <Text variant="bodyBold" tone="terracotta" style={{ marginTop: 4 }}>
+                    {data.email}
+                  </Text>
+                  <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
+                    TAP TO EMAIL
+                  </Text>
+                </Card>
+              </Pressable>
+            ) : null}
+          </View>
+        );
+      })()}
 
       <Divider />
 

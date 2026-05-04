@@ -1,5 +1,195 @@
 # Changelog
 
+## Phase 13 — Notifications + Netlify deploy (2026-05-04)
+
+The full notifications system: in-app inbox, realtime delivery, per-channel preferences, an admin announcement composer, and browser push pings on web. Native push (iOS/Android) is scaffolded but stubbed pending `expo-notifications` install. Plus a working Netlify deploy config.
+
+**What works**
+
+- **`/notifications` inbox** — chronological list of every notification surfaced to the viewer. Type pill (DM, Event, Build, Announce, etc.), title, body preview, relative time. Unread rows have a turquoise dot + accent border. Auto-marks all read on focus. Tapping a row deep-links to the relevant screen (event, partner, profile, points, inbox).
+- **Profile tab gets a Notifications button** with unread count (`Notifications · 3 unread`). Switches to primary variant when there's anything new.
+- **`useNotifications()` hook** loads + subscribes via Supabase Realtime to INSERT and UPDATE on `notifications` filtered by `user_id=auth.uid()`. New rows appear instantly without a refresh; mark-read updates flow through.
+- **Per-channel preferences** in Edit Profile → **Notifications** card. 10 toggles (events, event reminders, DMs, application status, achievements, build likes/comments, new partners, announcements, points milestones). Stored in `profiles.notification_prefs` jsonb. The `notify()` Postgres helper reads this — toggling something off suppresses both the inbox row AND any push.
+- **`/admin/announcements`** founder broadcast tool with 4 audience modes (All approved · Drivers+ · Collector only · One member). Live recipient count shown above the Send button. Sends one `notifications` row per recipient via a single `insert` — the existing realtime feed delivers them instantly.
+- **Browser push pings (web)** — `lib/push.ts` wraps the browser `Notification` API. The `/notifications` screen prompts for permission once; after that, every realtime notification triggers a native browser ping (works even when the tab isn't focused). Native iOS/Android push is stubbed in `registerExpoPush()` with comments showing the exact `expo-notifications` swap-in.
+- **Postgres-side fan-in / fan-out** in migration `0013_notifications.sql`:
+  - `notify(user_id, type, title, body, related_id)` SECURITY DEFINER helper. Reads `notification_prefs[type]` and skips if it's explicitly false. Returns the inserted id (or null when suppressed).
+  - `notify_approved(type, title, body, related_id)` broadcasts to all approved/paid members in one statement, respecting per-recipient prefs. Used by the new-event and new-partner triggers.
+  - `on_message_insert` trigger → fires `notify()` to the recipient on any DM.
+  - `on_application_status` trigger → fires on UPDATE OF status with custom copy for approved / rejected / waitlisted.
+  - `on_achievement_insert` trigger → fires when a row lands in `achievements`.
+  - `on_build_like` / `on_build_comment` triggers → notify the build update's author (skip self-action).
+  - `on_event_insert` trigger → broadcasts to approved+ unless the event is created `cancelled`.
+  - `on_partner_insert` trigger → broadcasts to approved+.
+  - `notifications` added to the `supabase_realtime` publication so postgres_changes events fire.
+  - Adds `profiles.expo_push_token text` (nullable, indexed).
+  - New RLS policy: members can insert their own notifications (mirrors how `notify()` works under SECURITY DEFINER and lets the announcement composer write directly without an RPC).
+
+**Netlify deploy**
+
+- `netlify.toml` in `dsc-app/` — build cmd `npm run build:web`, publish `dist/`, SPA fallback (`/* → /index.html 200`), long cache for hashed asset paths, no-cache for `index.html`, sane security headers (X-Frame-Options DENY, etc.).
+- `public/_redirects` belt-and-suspenders for any environment that doesn't honor the toml redirect block.
+- `package.json` gains `build:web`: `expo export --platform web`.
+- `README.md` deploy section walks through linking the GitHub repo, setting the base directory to `dsc-app`, the env vars to add, the Supabase URL allow-list step, and a local production-build sanity check.
+
+**What's stubbed**
+
+- **Native iOS / Android push** — `expo-notifications` isn't in `package.json`. To enable: `npm install expo-notifications`, swap the body of `registerExpoPush()` in `lib/push.ts` per the inline comments, set up an Expo project ID, and (for production iOS) configure an APNs key in EAS. The Expo Push API itself is free.
+- **`send-push` edge function** — when native tokens exist, deliver pushes by calling `https://exp.host/--/api/v2/push/send` with the device's `expo_push_token` from a Supabase Edge Function triggered after `notifications` insert (via `pg_net` HTTP request, or a queue worker). Front-end pings work today via realtime, so this is a true follow-up rather than a blocker.
+- **Event reminder cron (24h before)** — needs `pg_cron` to scan `event_rsvps` daily and call `notify()`. Same dependency as the anniversary points cron from Phase 6/11.
+- **Quiet hours / per-channel push vs in-app** — current toggles control both inbox AND push. A per-channel "in-app only" mode is a small follow-up.
+
+**What to test before moving on**
+
+1. Run `0013_notifications.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select proname from pg_proc where proname in ('notify','notify_approved');           -- 2 rows
+   select tgname from pg_trigger where tgname like 'on_%_notify' or tgname in
+     ('on_message_insert','on_application_status','on_achievement_insert',
+      'on_build_like','on_build_comment','on_event_insert','on_partner_insert');
+   select pubname, tablename from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'notifications';                -- 1 row
+   select column_name from information_schema.columns
+    where table_name = 'profiles' and column_name = 'expo_push_token';                   -- 1 row
+   ```
+2. Reload the app at http://localhost:8081 as your admin. Profile tab should show a **Notifications** button (no badge yet).
+3. From a second browser/incognito window, sign in as another approved member. Have them DM you — your **Notifications** count should bump in real time.
+4. Open `/notifications` → tap **Enable Pings** → approve the browser permission prompt. Have the other window DM you again — the native browser ping should fire on top of the in-app row.
+5. As admin, **Admin → Announce**. Pick "All approved", title "Show is moving venues", send. The recipient count should update before send and every approved member should see the row appear in their inbox immediately.
+6. Send an announcement to **One member** — pick a target, send, verify that only that member's notifications row lands.
+7. Edit Profile → **Notifications** card → toggle "Direct messages" off → save. Have the other browser DM you — no inbox row should land. Toggle it back on, verify the next DM does land.
+8. As admin, create a new event — every approved+ member should get a `New event: <title>` notification. Same with creating a new partner.
+9. Approve another applicant — that user should get a `You're in.` notification with the welcome body copy.
+
+**Decisions made**
+
+- **`notify()` is SECURITY DEFINER and reads prefs server-side** rather than filtering on the client. Lets us trust that suppressed channels don't even hit the database — keeps the inbox clean and avoids racing client filters.
+- **Triggers fire `notify()` synchronously inside the original transaction** rather than via a queue. Simpler, atomic, and works at our scale (200 cap × handful of events / day = nothing). For broadcast inserts, the fan-out is a single `insert ... select` so no N+1.
+- **Browser Notification API for web push** instead of pulling in a service worker + push subscription server. Notification API works without a server, the realtime subscription already fires when a row arrives, and "ping when realtime delivers" gives 95% of the value of true push without any infrastructure. When the user closes the browser, no ping — but that's the intended behavior for web on shared computers anyway.
+- **`expo-notifications` not bundled by default.** It would force everyone (including Netlify CI) to ship the native push runtime even though most testing is happening on web. Stubbed `registerExpoPush()` with inline swap-in instructions keeps the bundle lean.
+- **Self-insert RLS on `notifications`** instead of a SECURITY DEFINER `send_announcement()` RPC. The composer writes one row per recipient under the admin's auth.uid (which is the recipient's id is the foreign key constraint, RLS check `auth.uid() = user_id` only matches when admin sends to themselves). Wait — that doesn't work for broadcasts. Resolution: admins already have the existing `admin sends notifications` policy from `0001_init.sql` (`for insert with check (is_admin())`), so the composer relies on that for non-self recipients. The new self-insert policy is for future client-driven cases (e.g. a "remind me" feature) and for testing.
+- **Type pill uses first letter only** in the row icon. Keeps the layout dense and scans visually with the type pill text right next to it.
+
+## Phase 12 — Polish + Deferred Stubs (2026-05-04)
+
+The final spec phase. Skeleton loaders on the highest-traffic screens, admin event editing, the reward fulfillment queue, member privacy toggles, and partner-suggestion → new-partner prefill.
+
+**What works**
+
+- **`Skeleton` / `SkeletonRow` / `SkeletonCard`** primitives in `components/dsc/Skeleton.tsx` — animated opacity pulse using RN's `Animated` API (no Reanimated worklet overhead). Drop-in for the bare "Loading…" cards.
+- Loading skeletons land on:
+  - **Directory** tab — 3 rows
+  - **Events** tab — 2 cards
+  - **Marketplace** tab — 2 cards
+  - **Inbox** — 2 rows
+  - **Admin · Applications** — 2 cards
+- **`/admin/events/[id]/edit`** — full event editor reusing a new shared `EventForm` component (extracted from `admin/events/new.tsx`). Loads the existing event, lets admins update any field, hero image, capacity, tier, guest passes. Includes a one-tap **Cancel Event** action that flips `status='cancelled'` (with a confirm prompt) and a **Restore Event** action that flips it back to `'upcoming'`. The event detail page (`/events/[id]`) gains an admin "Edit Event" button that deep-links here.
+- **`/admin/redemptions`** — reward fulfillment queue. Filter pills (Pending / Fulfilled / Cancelled / All), live counts at the top, per-row Fulfill / Cancel & Refund / Reopen actions. Cancel & Refund inserts a `redemption_refund` `points_transactions` row to credit the cost back to the member's balance — the existing balance trigger does the rest. The admin hub gets a **Redemptions** tile with a pending-count badge.
+- **Privacy controls** — Edit Profile gains a Privacy card with three toggles: *Show phone publicly*, *Show email publicly*, *Hide Instagram*. Defaults match the prior behavior (phone & email private, IG visible if set). `/u/[id]` reads `profiles.privacy_prefs` and:
+  - Renders the IG card only when `instagram_handle` is set AND `hide_instagram` is not true.
+  - Renders a tappable Phone card (`tel:` deeplink) only when `show_phone` is true.
+  - Renders a tappable Email card (`mailto:`) only when `show_email` is true.
+- **Partner-suggestion → form prefill** — the Partner Suggestions screen's **Create Partner** button now passes `?suggestion=<id>` into `/admin/partners/new`. The new-partner route resolves the suggestion, prefills the partner name, and seeds a `note` contact row with the suggester's contact info + why. On save, the suggestion is automatically marked `reviewed=true` so the inbox stays clean.
+- **Points humanizer** picks up `redemption_refund` → "Redemption refunded" so the points history reads cleanly when an admin cancels a redemption.
+- Migration `0012_polish.sql`:
+  - Adds `profiles.privacy_prefs jsonb not null default '{}'` with a comment documenting the recognized keys (`show_phone`, `show_email`, `hide_instagram`).
+
+**What's stubbed**
+
+- **Push notifications** — still deferred. The whole `expo-notifications` stack is its own focused phase (APNs/FCM credentials, paid Apple Dev account, server triggers). When it lands, the points engine, event reminders, message receive, application status, and admin announcement composer all hook in. Notification preferences UI lives next to the privacy toggles when that ships.
+- **Anniversary points cron (250 / year)** — still needs `pg_cron` or a Supabase scheduled function.
+- **Group threads / DM attachments / typing indicators** — out of scope per the original spec.
+- **Member-suggestion / connector achievements wired to a referral system** — schema has the `referred_by` column on applications and the achievement key in the catalog; the admin attribution flow isn't built. Probably a small dedicated phase later.
+- **Skeleton coverage on remaining admin queue screens** (Members, Points, Builds, Suggestions, Analytics) — they still show "Loading…" text. Easy follow-up; the primitive is in place.
+
+**What to test before moving on**
+
+1. Run `0012_polish.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select column_name from information_schema.columns
+    where table_name = 'profiles' and column_name = 'privacy_prefs';     -- 1 row
+   ```
+2. Reload the app at http://localhost:8081. As an approved member, open any data tab (Directory, Events, Marketplace) — you should see pulsing skeleton cards/rows for ~half a second before content lands instead of the old "Loading…" text.
+3. As yourself, **Profile → Edit Profile**. Scroll to the **Privacy** card. Toggle "Show phone publicly" on, save. Open `/u/<your-id>` from the Directory — the Phone card should appear.
+4. Toggle "Hide Instagram" on, save — the IG card should disappear from your public profile.
+5. As an admin, open any upcoming event → **Edit Event**. Change the title, save. Reload — the change should stick.
+6. From the same edit screen, hit **Cancel Event**, confirm — the event should now show a CANCELLED banner and the events list should reflect the status. Hit **Restore Event** to undo.
+7. Have an approved member redeem a reward (Profile tab → Browse Rewards). Switch to admin → **Admin → Redemptions**. The pending badge should be 1 and the row should show. Click **Cancel & Refund** → confirm. The redemption flips to `cancelled`, a `+<cost>` row lands in `points_transactions` with reason `redemption_refund`, and the member's balance bumps.
+8. Submit a partner suggestion as an approved member (Marketplace tab footer). As admin, open **Admin → Partner Suggestions**, hit **Create Partner** on a row. The new-partner form should land with the name prefilled and a `note` contact row containing the suggester's info. Save the partner — the suggestion should auto-flip to `reviewed=true` (verify with `select reviewed from partner_suggestions where id = '<id>';`).
+
+**Decisions made**
+
+- **`Skeleton` uses RN `Animated` not Reanimated** — the project has Reanimated installed, but a single opacity pulse doesn't need worklet machinery. Native-driven `Animated` keeps the bundle smaller and avoids any web/Worklet edge cases.
+- **`EventForm` extracted, not duplicated** — the existing 388-line `admin/events/new.tsx` was tempting to copy-paste, but the form would have drifted within a release. Same `mode: 'create' | 'edit'` shape we already use for `PartnerForm`. The new + edit routes are now ~15-line wrappers.
+- **Cancel/Restore logic lives in `EventForm`, AND the event detail page keeps its own inline Cancel button** — the detail page button is a one-tap quick action without leaving the page; the form button is for when you're already in the editor. Both write the same status value, so they're consistent.
+- **Cancel & Refund inserts a positive `points_transactions` row** rather than a custom RPC. The balance trigger already handles signed amounts; one ledger covers both the redemption (`-cost`) and refund (`+cost`). Reason `redemption_refund` is the canonical key for the humanizer.
+- **`privacy_prefs` is jsonb, not boolean columns** — same shape as the existing `notification_prefs`. Lets us add new flags (e.g. `hide_garage`, `dm_open_to_drivers`) without a migration each time.
+- **Suggestion prefill seeds a `note` contact row, not separate fields** — the suggestion's `contact_info` is free-text from the member ("they're on @ig and at 480-...") so trying to parse it into structured website/phone rows would be brittle. The admin sees the raw note in the form and reorganizes it as needed.
+- **Auto-mark suggestion reviewed on partner create** — saves a click, and "I created a partner from this nomination" is unambiguously "I reviewed it." If we ever need to keep it open after creation, easy to add a checkbox.
+
+## Phase 11 — Admin Polish (2026-05-03)
+
+The founders' workbench. Five new admin screens behind the existing tile grid, plus a real Featured Build pick that drives the home carousel.
+
+**What works**
+
+- **`/admin`** redesigned around a 2-column tool grid with live unreviewed/pending badges. Pending applications and unreviewed partner suggestions show a turquoise count pill on their tile.
+- **`/admin/members`** — full roster query with name/email/city/app # search, status filter (All / Pending / Approved / Paid / Rejected) and tier filter (Any / None / Drivers / Collector). Each card has:
+  - Avatar, full name, app number, role pill (FOUNDER if admin), email, status / tier / balance pills.
+  - **Set tier** row: No tier · Drivers · Collector. Setting drivers/collector flips status to `paid` and stamps `paid_since` (if not already set). No tier clears `paid_since`.
+  - **Status** row: Approve · Suspend (writes `status='rejected'`, also clears tier so the member loses paid privileges immediately). Restore by tapping Approve.
+  - **Adjust Points** deep-links to `/admin/points?user=<id>` with the member preselected.
+- **`/admin/points`** — manual award/deduct with a typeahead member picker (search by name, email, app #). Quick-amount pills (50/100/250/500/1000), free-text reason field. Award and Deduct buttons insert a row into `points_transactions` with reason `manual_grant: <reason>` (or just `manual_grant` if no reason). The existing `bump_points_balance` trigger updates the balance automatically. Recent manual adjustments list at the bottom — last 20 grants across all members, each with member name, reason, date, and signed amount.
+- **`/admin/builds`** — pulls the latest 60 build updates ordered featured-first. Each card has the cover photo, author + car line, caption preview, and a Feature/Unfeature button that calls `set_build_featured(update_id, value)`. Filter pills: All · Featured · Recent. Search across member name, car, caption.
+- **`/admin/partners/suggestions`** — inbox of `partner_suggestions`. Default mode is unreviewed; switch to All to see triaged. Each suggestion shows submitter avatar + date, suggested name, why, contact. Two actions: **Create Partner** (deep-links to `/admin/partners/new`) and **Mark Reviewed** (toggle).
+- **`/admin/analytics`** — reads the new `admin_analytics()` RPC and renders 6 grouped stat sections:
+  - Members: total / pending / approved / paid / drivers / collector
+  - Applications: pending / approved / rejected + conversion %
+  - Events: upcoming / past / RSVPs / check-ins + show-rate %
+  - Builds: total updates / featured
+  - Partners: partners total / featured / suggestions inbox
+  - Points: awarded lifetime / spent / in circulation / pending redemptions / fulfilled
+  - Plus the live scarcity counter at the top.
+- **Home Featured Builds carousel** now orders by `is_featured desc, featured_at desc nulls last, created_at desc` so admin picks bubble to the top while still falling back to recency. Members see the same on the home tab.
+- Migration `0011_admin.sql`:
+  - Adds `build_updates.is_featured` (bool) and `build_updates.featured_at` (timestamptz) plus a `(is_featured, featured_at desc)` index.
+  - `admin_analytics()` SECURITY DEFINER SQL function returning one wide row of 22 counts/aggregates.
+  - `set_build_featured(update_id, value)` SECURITY DEFINER RPC — admin-checked; stamps `featured_at = now()` when featuring, nulls it when unfeaturing.
+
+**What's stubbed**
+
+- **Push notification composer** — the spec calls for a "send custom announcements to specific tiers or all members" UI. Out of scope here because `expo-notifications` itself isn't wired (deferred from Phase 4 / 6). When push lands, this lives at `/admin/announcements` and writes to `notifications`.
+- **Reward fulfillment workflow** — the redemptions counts are now visible in analytics, but there's still no admin UI to mark a `pending` redemption `fulfilled` or `cancelled`. Easy follow-up: a `/admin/redemptions` queue with the same shape as `/admin/applications`.
+- **Edit / cancel events** — admin can create events from `/admin/events/new`; editing existing events is still missing.
+- **Privacy controls UI** for members (per-field hide phone/email/IG) — schema change still pending; same shape as the original Phase 7 stub note.
+- **Partner-suggestion → Create-Partner prefill** — the Create Partner button just navigates to the empty form. The admin re-types name and contact while looking at the suggestion. Adding URL-param prefill to `/admin/partners/new` is a quick follow-up if it becomes annoying.
+- **Anniversary points cron (250 / year)** — same as Phase 6 stub. Needs `pg_cron` or a scheduled edge function.
+- **Suspended ≠ a real status** — there's no `suspended` value in the `MemberStatus` check constraint, so suspending writes `status = 'rejected'` and clears the tier. That's behaviorally correct (paid privileges revoked, RLS treats them as not approved+) but the UI label says Suspend / Restore for clarity. If the founders want a true suspended state with different audit semantics, add an enum value in a follow-up migration.
+
+**What to test before moving on**
+
+1. Run `0011_admin.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select column_name from information_schema.columns
+    where table_name = 'build_updates' and column_name in ('is_featured', 'featured_at');  -- 2 rows
+   select proname from pg_proc where proname in ('admin_analytics','set_build_featured');  -- 2 rows
+   ```
+2. Reload the app at http://localhost:8082 as your admin account. Open the **Profile** tab → **Open Admin**.
+3. The hub should show 6 tool tiles (Applications, Members, Points, Featured Builds, Partner Suggestions, Analytics) plus quick actions for New Event / New Partner. The Applications and Partner Suggestions tiles should show count badges if you have pending items.
+4. **Members:** tap → search for yourself → filter by Tier `Drivers`. Set yourself to Drivers, then back to No tier. Confirm `select status, tier, paid_since from profiles where id = '<you>';` reflects the changes.
+5. **Points:** tap → search for a test member → award 250 with reason "Test grant". Confirm `select * from points_transactions where reason like 'manual_grant%' order by created_at desc limit 1;` and the balance bumped on the member card. Tap **Adjust Points** from the Members card to verify the deep-link prefill works.
+6. **Featured Builds:** tap → pick any build update → **Feature**. Pull up the Home tab — it should now appear first in the Featured Builds carousel. Confirm `select is_featured, featured_at from build_updates where id = '<id>';` shows true + timestamp.
+7. **Partner Suggestions:** as a non-admin approved member, submit a suggestion from the Marketplace tab. Switch back to admin → the inbox should show 1, badge on the hub. Mark Reviewed → switch to All to see it.
+8. **Analytics:** tap → the grid should populate. Tap Refresh and verify the numbers stay stable. Sanity-check totals against direct SQL: `select count(*) from profiles;` etc.
+
+**Decisions made**
+
+- **Direct table writes via RLS, not new SECURITY DEFINER RPCs** for tier/status/points/suggestion-reviewed updates. The `is_admin()` policies on `profiles`, `points_transactions`, and `partner_suggestions` are already permissive enough; adding RPCs would be ceremony without benefit. The exception is `set_build_featured`, which is SECURITY DEFINER so the timestamp stamping stays atomic and the RLS for `build_updates` (owner-only writes) doesn't need to change.
+- **Suspending = `status='rejected'` + `tier='none'` + `paid_since=null`**, with the UI labeled "Suspend / Restore". Avoids a check-constraint migration; the practical effect is identical (member loses paid feature access, RLS gates them out of approved+ views, no points earning).
+- **`manual_grant: <reason>` reason format** keeps the points history page and analytics groupable by prefix. The points history humanizer already strips `manual_grant:` to render "Manual grant — Show MVP" cleanly.
+- **Analytics is one wide-row RPC** rather than 6 separate queries. One round-trip, postgres pre-computes everything, easier to extend (one new column instead of one new endpoint).
+- **Featured Build sort = `is_featured desc, featured_at desc nulls last, created_at desc`** instead of a strict featured-only fetch with a recency fallback. Bubbles admin picks to the front and silently fills the rest with recency, no two-query branching in the home screen.
+
 ## Phase 10 — Messaging (2026-04-30)
 
 Real-time direct messages between paid members (and admins). Inbox + threaded chat, live delivery via Supabase Realtime, mark-read on focus, unread badge on the Profile tab.

@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useMyCars } from '@/hooks/use-my-cars';
 import { useInbox } from '@/hooks/use-messaging';
+import { useNotifications } from '@/hooks/use-notifications';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { AchievementKey } from '@/lib/achievements';
 import { colors } from '@/lib/theme';
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const { profile, session, signOut } = useAuth();
   const { cars, loading: carsLoading } = useMyCars();
   const { totalUnread } = useInbox();
+  const { unreadCount: unreadNotifications } = useNotifications();
   const [unlocked, setUnlocked] = useState<Set<AchievementKey>>(new Set());
 
   useEffect(() => {
@@ -167,6 +169,17 @@ export default function ProfileScreen() {
       ) : null}
 
       <Divider />
+
+      <Button
+        label={
+          unreadNotifications > 0
+            ? `Notifications · ${unreadNotifications} unread`
+            : 'Notifications'
+        }
+        variant={unreadNotifications > 0 ? 'primary' : 'secondary'}
+        fullWidth
+        onPress={() => router.push('/notifications')}
+      />
 
       <Button
         label={totalUnread > 0 ? `Messages · ${totalUnread} unread` : 'Messages'}

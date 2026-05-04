@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Screen,
+  SkeletonRow,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
@@ -50,9 +51,10 @@ export default function InboxScreen() {
           <Text tone="muted">Couldn{'’'}t load: {error}</Text>
         </Card>
       ) : loading ? (
-        <Card variant="inset">
-          <Text tone="muted">Loading…</Text>
-        </Card>
+        <View style={{ gap: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
       ) : rows.length === 0 ? (
         <Card variant="inset">
           <Text variant="bodyBold">No conversations yet.</Text>

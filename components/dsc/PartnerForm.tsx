@@ -26,22 +26,30 @@ import { Text } from './Text';
 import { TextField } from './TextField';
 
 type Props =
-  | { mode: 'create'; partnerId?: undefined }
-  | { mode: 'edit'; partnerId: string };
+  | {
+      mode: 'create';
+      partnerId?: undefined;
+      defaults?: { name?: string; contactInfo?: string; suggestionId?: string };
+    }
+  | { mode: 'edit'; partnerId: string; defaults?: undefined };
 
 type ContactPair = { key: string; value: string };
 
 export function PartnerForm(props: Props) {
-  const [name, setName] = useState('');
+  const initialName = props.mode === 'create' ? props.defaults?.name ?? '' : '';
+  const initialContacts: ContactPair[] =
+    props.mode === 'create' && props.defaults?.contactInfo
+      ? [{ key: 'note', value: props.defaults.contactInfo }]
+      : [{ key: 'website', value: '' }];
+
+  const [name, setName] = useState(initialName);
   const [locationName, setLocationName] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [discountTerms, setDiscountTerms] = useState('');
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [categories, setCategories] = useState<Set<PartnerCategory>>(new Set());
-  const [contacts, setContacts] = useState<ContactPair[]>([
-    { key: 'website', value: '' },
-  ]);
+  const [contacts, setContacts] = useState<ContactPair[]>(initialContacts);
   const [featured, setFeatured] = useState(false);
 
   const [loading, setLoading] = useState(props.mode === 'edit');
@@ -156,6 +164,12 @@ export function PartnerForm(props: Props) {
           console.error('[PartnerForm] insert failed', error, payload);
           showError('Could not save', error?.message ?? 'Unknown error');
           return;
+        }
+        if (props.defaults?.suggestionId) {
+          await supabase
+            .from('partner_suggestions')
+            .update({ reviewed: true })
+            .eq('id', props.defaults.suggestionId);
         }
         router.replace({ pathname: '/partners/[id]', params: { id: data.id } });
         return;

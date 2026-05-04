@@ -139,10 +139,15 @@ function humanizeReason(reason: string): string {
     invite_approved: 'Referral approved',
     invite_upgraded: 'Referral upgraded',
     build_update: 'Build update',
+    redemption_refund: 'Redemption refunded',
   };
   if (map[reason]) return map[reason];
   if (reason.startsWith('reward_redemption: ')) {
     return `Redeemed: ${reason.slice('reward_redemption: '.length)}`;
+  }
+  if (reason === 'manual_grant') return 'Manual grant';
+  if (reason.startsWith('manual_grant: ')) {
+    return `Manual grant — ${reason.slice('manual_grant: '.length)}`;
   }
   return reason
     .replace(/_/g, ' ')

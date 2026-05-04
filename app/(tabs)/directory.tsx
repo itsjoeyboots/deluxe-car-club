@@ -4,6 +4,7 @@ import {
   Card,
   MemberRow,
   Screen,
+  SkeletonRow,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
@@ -76,9 +77,11 @@ export default function DirectoryScreen() {
           <Text tone="muted">Couldn{'’'}t load directory: {error}</Text>
         </Card>
       ) : loading ? (
-        <Card variant="inset">
-          <Text tone="muted">Loading members…</Text>
-        </Card>
+        <View style={{ gap: 10 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
       ) : members.length === 0 ? (
         <Card variant="inset">
           <Text variant="bodyBold">
