@@ -4,9 +4,9 @@ import { router } from 'expo-router';
 import {
   Button,
   Card,
-  EventCard,
+  EventListItem,
   Screen,
-  SkeletonCard,
+  SkeletonRow,
   Text,
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
@@ -73,9 +73,10 @@ export default function EventsScreen() {
       ) : null}
 
       {loading ? (
-        <View style={{ gap: 14 }}>
-          <SkeletonCard />
-          <SkeletonCard />
+        <View style={{ gap: 8 }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
         </View>
       ) : events.length === 0 ? (
         <Card variant="inset">
@@ -89,9 +90,9 @@ export default function EventsScreen() {
           </Text>
         </Card>
       ) : (
-        <View style={{ gap: 14 }}>
+        <View style={{ gap: 8 }}>
           {events.map((event) => (
-            <EventCard key={event.id} event={event} />
+            <EventListItem key={event.id} event={event} />
           ))}
         </View>
       )}

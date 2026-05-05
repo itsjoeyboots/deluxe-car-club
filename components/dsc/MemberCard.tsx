@@ -76,14 +76,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   number: {
-    color: colors.ink,
+    color: colors.textPrimary,
     fontFamily: fonts.serif,
     fontSize: 28,
     letterSpacing: 1,
     marginTop: 4,
   },
   name: {
-    color: colors.ink,
+    color: colors.textPrimary,
     fontFamily: fonts.serif,
     fontSize: 22,
     letterSpacing: 0.4,

@@ -10,7 +10,6 @@ import {
 } from '@/components/dsc';
 import { useAuth } from '@/lib/auth-context';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { isStripeConfigured } from '@/lib/stripe';
 import { MEMBERSHIP } from '@/lib/membership';
 import { colors } from '@/lib/theme';
 import type { Application } from '@/types/db';
@@ -42,7 +41,7 @@ export default function ApplicationConfirmation() {
     ? new Date(application.created_at).toLocaleDateString()
     : new Date().toLocaleDateString();
 
-  const paid = application?.payment_status === 'paid';
+  void application; // suppress unused-var lint when no fields are read
 
   return (
     <Screen contentContainerStyle={{ paddingTop: 24, gap: 18 }}>
@@ -69,16 +68,7 @@ export default function ApplicationConfirmation() {
           Receipt
         </Text>
         <Row label="Submitted" value={submittedOn} />
-        <Row
-          label="Fee"
-          value={
-            paid
-              ? `$${MEMBERSHIP.applicationFeeUsd} paid`
-              : isStripeConfigured
-                ? 'Awaiting payment'
-                : `$${MEMBERSHIP.applicationFeeUsd} (dev-skip)`
-          }
-        />
+        <Row label="Cost" value="Free" />
         <Row
           label="Status"
           value={
@@ -91,12 +81,12 @@ export default function ApplicationConfirmation() {
         <Text variant="bodyBold">What happens next</Text>
         <Bullet>You{'’'}ll get an email the moment a decision is made.</Bullet>
         <Bullet>
-          If approved, you join the waitlist for paid tiers (capped at{' '}
-          {MEMBERSHIP.paidCap}).
+          If approved, activate your ${MEMBERSHIP.base.annual}/yr base
+          membership to unlock the full app.
         </Bullet>
         <Bullet>
-          Approved members get a digital welcome card and access to the
-          announcements channel.
+          Add the Marketplace (${MEMBERSHIP.marketplaceAddon.annual}/yr) or
+          Season Pass (${MEMBERSHIP.seasonPass.monthly}/mo) whenever you want.
         </Bullet>
       </Card>
 

@@ -9,6 +9,7 @@ import {
   CarRow,
   Divider,
   MemberCard,
+  MembershipStatus,
   PointsChip,
   Screen,
   Text,
@@ -121,6 +122,8 @@ export default function ProfileScreen() {
       {profile && (profile.status === 'approved' || profile.status === 'paid') ? (
         <MemberCard profile={profile} tier={tier} />
       ) : null}
+
+      <MembershipStatus profile={profile} />
 
       <View style={{ gap: 10 }}>
         <View

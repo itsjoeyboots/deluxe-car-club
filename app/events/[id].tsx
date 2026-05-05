@@ -21,12 +21,13 @@ import { useAuth } from '@/lib/auth-context';
 import { useEvent, rsvpToEvent, cancelRsvp } from '@/hooks/use-events';
 import { supabase } from '@/lib/supabase';
 import { colors, radii } from '@/lib/theme';
-import type { EventTier, MemberStatus, MemberTier } from '@/types/db';
+import { deriveMembershipState, type MembershipState } from '@/lib/membership';
+import type { EventTier, MemberStatus } from '@/types/db';
 
 const TIER_LABEL: Record<EventTier, string> = {
   approved: 'All approved members',
-  drivers: 'Drivers tier or above',
-  collector: 'Collector tier only',
+  drivers: 'Base members',
+  collector: 'Season Pass holders',
 };
 
 export default function EventDetailScreen() {
@@ -37,7 +38,7 @@ export default function EventDetailScreen() {
 
   const userId = session?.user.id;
   const status: MemberStatus = profile?.status ?? 'guest';
-  const tier: MemberTier = profile?.tier ?? 'none';
+  const membership = deriveMembershipState(profile);
 
   if (loading) {
     return (
@@ -75,7 +76,7 @@ export default function EventDetailScreen() {
   const cap = event.capacity;
   const full = cap != null && event.going_count >= cap;
   const isPast = start.getTime() < Date.now();
-  const tierAllowed = tierMeetsRequirement(event.tier_required, status, tier);
+  const tierAllowed = tierMeetsRequirement(event.tier_required, status, membership);
 
   async function handleRsvp() {
     if (!userId) {
@@ -310,7 +311,7 @@ export default function EventDetailScreen() {
         <Card variant="inset" style={{ borderLeftWidth: 4, borderLeftColor: colors.danger }}>
           <Text variant="bodyBold">{TIER_LABEL[event.tier_required]} only.</Text>
           <Text variant="small" tone="muted" style={{ marginTop: 4 }}>
-            {gateCopy(event.tier_required, status, tier)}
+            {gateCopy(event.tier_required, status, membership)}
           </Text>
         </Card>
       ) : (
@@ -391,32 +392,33 @@ export default function EventDetailScreen() {
 function tierMeetsRequirement(
   required: EventTier,
   status: MemberStatus,
-  tier: MemberTier,
+  membership: MembershipState,
 ): boolean {
   // Must be at least approved to RSVP at all.
   if (status !== 'approved' && status !== 'paid') return false;
   if (required === 'approved') return true;
-  if (required === 'drivers')
-    return tier === 'drivers' || tier === 'collector';
-  if (required === 'collector') return tier === 'collector';
+  // 'drivers' (legacy) → requires active base membership
+  if (required === 'drivers') return membership.hasActiveBase;
+  // 'collector' (legacy) → requires Season Pass add-on
+  if (required === 'collector') return membership.hasSeasonPass;
   return false;
 }
 
 function gateCopy(
   required: EventTier,
   status: MemberStatus,
-  tier: MemberTier,
+  membership: MembershipState,
 ): string {
   if (status !== 'approved' && status !== 'paid') {
     return 'Application approval required before you can RSVP.';
   }
-  if (required === 'drivers' && tier === 'none') {
-    return 'Upgrade to the Drivers tier to RSVP.';
+  if (required === 'drivers' && !membership.hasActiveBase) {
+    return 'Activate your base membership to RSVP.';
   }
-  if (required === 'collector' && tier !== 'collector') {
-    return 'Collector tier only — rallies, garage hangs, and tech nights.';
+  if (required === 'collector' && !membership.hasSeasonPass) {
+    return 'Season Pass holders only — rallies, garage hangs, exclusive events.';
   }
-  return 'You don’t meet the tier requirement for this one.';
+  return 'You don’t meet the membership requirement for this one.';
 }
 
 function showError(title: string, message: string) {

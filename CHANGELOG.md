@@ -1,5 +1,71 @@
 # Changelog
 
+## Phase 14 — Membership model overhaul + visual polish (2026-05-04)
+
+The tiered Drivers/Collector system is gone. Replaced with a flat-base + à-la-carte add-ons model: free application → admin approval → $100/yr base → optionally $500/yr Marketplace add-on or $200/mo Season Pass. Plus QR contrast fix, MemberCard text fix, compact event/partner rows, and the DCC logo on welcome.
+
+**Membership model**
+
+- **Application is free.** No more $100 fee. The 5-step apply flow ends with "Submit Application" (no Stripe step). `/apply/confirmation` shows "Cost: Free" and explains the path: free apply → admin approval → activate $100/yr base → optional add-ons.
+- **Base membership: $100 / year** (was tiered Drivers/Collector). Required to access most paid-member features. After admin approval, members see an "Activate Base" CTA.
+- **Marketplace add-on: $500 / year.** The Marketplace tab (formerly always visible to approved members) is now gated. Without the add-on, members see a locked screen explaining the add-on with an Activate CTA. With it, the tab works as before.
+- **Season Pass add-on: $200 / month.** Replaces the old "Collector tier" gate on events. Events with `tier_required='collector'` now require an active Season Pass. Events with `tier_required='drivers'` require active base membership. `tier_required='approved'` events open to all approved members regardless of add-ons.
+- **Admin grant/revoke**: `/admin/members` rebuilt with three Membership Controls per member (Base / Marketplace / Season Pass) showing active status, current expiry, Grant 1yr/1mo, and Revoke buttons. Replaces the old "Set Tier" buttons.
+- **Membership Status component** lives on Profile (full variant) and Home (compact variant). Renders three cards (Base / Marketplace / Season Pass) with active pill, price, expiry, and Activate CTA on inactive items. Pre-approval users see the existing "Application Pending" / "Apply to Join" banner instead.
+- Migration `0014_membership_addons.sql`:
+  - Adds `profiles.base_paid_until`, `marketplace_addon_until`, `season_pass_until` (timestamptz, nullable).
+  - Backfills any current `paid` profile with a forward-dated `base_paid_until`. Any current `paid + tier=collector` profile also gets a forward-dated `season_pass_until`.
+  - SQL helpers `has_active_base()`, `has_marketplace_addon()`, `has_season_pass()` derive everything from the *_until columns.
+  - SECURITY DEFINER admin RPCs `admin_set_base(target, months)`, `admin_set_marketplace_addon(target, months)`, `admin_set_season_pass(target, months)`. Pass `months > 0` to extend, `0` to revoke immediately. Also stamps `status='paid'` when granting base.
+
+**Visual polish**
+
+- **QR code**: white background, ink-dark dots — proper scanner contrast (was dark-on-dark since the rebrand). Member card on Profile is now scannable.
+- **MemberCard text colors**: number + name were `colors.ink` (dark) on dark surface — invisible. Fixed to `textPrimary` (ivory).
+- **Compact event rows on Home + Events tab**: new `EventListItem` component with a 56px date tile (month/day/weekday) on the left + tight title/time/location/capacity meta on the right. Replaces the giant 16:9 hero stacks. Home shows top 3 with a "SEE ALL ›" link; Events tab shows the full list.
+- **Compact partner rows on Marketplace**: `PartnerCard` rebuilt as a horizontal row with a 76×76 thumbnail + name + location + discount in turquoise + first 3 category tags. The hero image and discount stay visible; total height drops by ~60%.
+- **Logo**: DCC logo (the included `539898679_…n.jpg`) copied to `assets/images/dcc-logo.jpg`. Wired into `app.json` for app icon, web favicon, and splash. The Welcome screen shows it 200×200, centered, above the tagline. Headline "Deluxe Car Club" text dropped (the logo carries the brand now).
+
+**What's stubbed**
+
+- **Stripe activation flows for the new prices** — Activate buttons currently show an alert pointing the user to admin grant. The `lib/stripe.ts` template needs three product types wired (base annual, marketplace annual, season monthly). Founders can grant via `/admin/members` for now.
+- **Auto-prorate / refund on revoke** — admin revoke just nulls the *_until timestamp. No partial refund logic. Add when Stripe is wired.
+- **Renewal reminders** — no cron checking `*_until` columns and nudging members to renew. Same dependency as the anniversary cron from Phase 6/12.
+- **Event capacity by Season Pass** — current model: Season Pass holders get access to `tier_required='collector'` events (rallies, exclusives) at no extra cost. If you ever want per-event surcharges or RSVP priority for Season Pass, that's a follow-up.
+- **Base membership cap** — schema still has `paidCap=100`; the cap is now interpreted as "base members" (not tiered). UI copy updated.
+- **Logo source quality** — the included JPG is 3.5KB / small. Works for favicon and web preview but production iOS app icon wants a 1024×1024 PNG. Drop a higher-res file at `assets/images/dcc-logo.jpg` to upgrade.
+
+**What to test before moving on**
+
+1. Run `0014_membership_addons.sql` in the Supabase SQL Editor. Verify:
+   ```sql
+   select column_name from information_schema.columns
+    where table_name = 'profiles'
+      and column_name in ('base_paid_until', 'marketplace_addon_until', 'season_pass_until'); -- 3 rows
+   select proname from pg_proc where proname like 'admin_set_%' or proname like 'has_%active%base'
+      or proname in ('has_active_base','has_marketplace_addon','has_season_pass');           -- 6 rows
+   ```
+2. Existing paid members should be backfilled with `base_paid_until` ≈ now + 1yr. Check:
+   ```sql
+   select id, status, base_paid_until from profiles where status = 'paid';
+   ```
+3. Reload the app at https://deluxe-car-club.netlify.app. Welcome screen should show the DCC logo above the tagline.
+4. Sign up a fresh test account → Start Application → walk through the 5 steps → Submit. No payment screen. Should land on confirmation showing Cost: Free.
+5. As admin: open Profile → Open Admin → Members. Pick a member → tap **Grant 1yr** next to Base Membership. Their card should now show a turquoise BASE pill. Tap **Grant 1yr** next to Marketplace Add-on. Tap **Grant 1mo** next to Season Pass.
+6. Sign in as that member. Profile tab should show three ACTIVE membership cards with renewal dates. Marketplace tab should now show partner shops (was locked screen before).
+7. Revoke the Marketplace add-on for them via admin. They reload → Marketplace tab should flip back to the locked screen with "Activate Marketplace" CTA.
+8. Create an event with `tier_required='collector'` (Season Pass required). Verify members without the pass see the locked state on the event page; members with it can RSVP.
+9. QR code on Profile (Member Card) should be visibly scannable — white background, dark dots.
+10. Home tab: Upcoming Events section should show compact rows with date tiles, not big hero banners.
+
+**Decisions made**
+
+- **Legacy `tier` column kept for now.** The new model is derived entirely from `*_until` timestamps — `tier` is no longer authoritative. Dropping it would break the FK-less `event_rsvps` semantics in places I haven't audited yet. Leaving it as a vestigial column is harmless and keeps the migration reversible if we ever want to roll back.
+- **`payment_status='paid'` on free applications** so the existing payment-pill in admin queue stays sensible. The application is free; "paid" means "no payment needed, application complete."
+- **Activate buttons show an alert** instead of routing to a (nonexistent) Stripe checkout. That nudges admins to grant manually until the real flows are wired, without breaking the UX for testing.
+- **`admin_set_base` also stamps `status='paid'`** — granting base membership implicitly marks them paid, since that's the user-visible meaning of the status field. Backfill respects existing `paid_since` to preserve member-since dates.
+- **Season Pass = `tier_required='collector'`** event mapping, not a schema change. Renaming the enum value would touch every existing event row + indexes; remapping the meaning at the gate keeps the schema stable.
+
 ## Phase 13 — Notifications + Netlify deploy (2026-05-04)
 
 The full notifications system: in-app inbox, realtime delivery, per-channel preferences, an admin announcement composer, and browser push pings on web. Native push (iOS/Android) is scaffolded but stubbed pending `expo-notifications` install. Plus a working Netlify deploy config.

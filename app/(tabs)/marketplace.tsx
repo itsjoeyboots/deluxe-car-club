@@ -27,6 +27,7 @@ import {
   type PartnerCategory,
 } from '@/hooks/use-partners';
 import { colors, fonts, radii } from '@/lib/theme';
+import { MEMBERSHIP, deriveMembershipState, formatUntil } from '@/lib/membership';
 
 type CategoryFilter = 'all' | PartnerCategory;
 
@@ -35,6 +36,67 @@ export default function MarketplaceScreen() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const { partners, total, loading, error } = usePartners({ search, category });
+
+  const membership = deriveMembershipState(profile);
+  const isAdmin = profile?.role === 'admin';
+  const canBrowse = membership.hasMarketplaceAddon || isAdmin;
+
+  if (!canBrowse) {
+    return (
+      <Screen contentContainerStyle={{ paddingTop: 24, gap: 16 }}>
+        <View>
+          <Text variant="eyebrow" tone="terracotta">
+            Add-on Required
+          </Text>
+          <Text variant="display" style={{ marginTop: 4 }}>
+            Marketplace
+          </Text>
+          <Text variant="small" tone="muted" style={{ marginTop: 8 }}>
+            The Marketplace is a paid add-on. Unlock the full partner shop
+            directory and DCC member discounts at every shop we work with.
+          </Text>
+        </View>
+
+        <Card variant="raised">
+          <Text variant="eyebrow" tone="terracotta">
+            {MEMBERSHIP.marketplaceAddon.label}
+          </Text>
+          <Text variant="display" style={{ marginTop: 4 }}>
+            ${MEMBERSHIP.marketplaceAddon.annual}
+            <Text variant="small" tone="muted">
+              {' '}/yr
+            </Text>
+          </Text>
+          <Text variant="small" tone="secondary" style={{ marginTop: 8 }}>
+            {MEMBERSHIP.marketplaceAddon.blurb}
+          </Text>
+          <Button
+            label="Activate Marketplace"
+            size="lg"
+            fullWidth
+            style={{ marginTop: 16 }}
+            onPress={() => {
+              if (typeof window !== 'undefined') {
+                window.alert(
+                  'Activation flow ships when Stripe is wired. Founders can grant access via the admin panel for now.',
+                );
+              }
+            }}
+          />
+        </Card>
+
+        <Card variant="inset">
+          <Text variant="bodyBold">What you get</Text>
+          <Text variant="small" tone="muted" style={{ marginTop: 6 }}>
+            · Full partner shop directory{'\n'}
+            · DCC member discounts at every shop{'\n'}
+            · Show My Card for in-store verification{'\n'}
+            · Featured deals + new partner alerts
+          </Text>
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen contentContainerStyle={{ paddingTop: 24, gap: 16 }}>
@@ -48,7 +110,7 @@ export default function MarketplaceScreen() {
       >
         <View style={{ flex: 1 }}>
           <Text variant="eyebrow" tone="terracotta">
-            Members-Only
+            Marketplace · Active
           </Text>
           <Text variant="display" style={{ marginTop: 4 }}>
             Partner Shops
@@ -57,8 +119,13 @@ export default function MarketplaceScreen() {
             Wraps, performance, detailing, tints, audio — discounts and tour
             days from shops we trust. Show your card to redeem.
           </Text>
+          {membership.marketplaceAddonUntil ? (
+            <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
+              ADD-ON RENEWS {formatUntil(membership.marketplaceAddonUntil)?.toUpperCase()}
+            </Text>
+          ) : null}
         </View>
-        {profile?.role === 'admin' ? (
+        {isAdmin ? (
           <Button
             label="New Partner"
             size="sm"

@@ -42,3 +42,6 @@ app-example
 /ios
 /android
 dist-test/
+
+# Local Netlify folder
+.netlify

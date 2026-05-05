@@ -5,9 +5,9 @@ import { colors, radii } from '@/lib/theme';
 type Props = {
   value: string;
   size?: number;
-  /** Tint of the dark dots. Defaults to DCC ink. */
+  /** Tint of the dark dots. Defaults to ink for proper scanner contrast. */
   color?: string;
-  /** Card background. Defaults to sand cream. */
+  /** Card background. Defaults to white — required for reliable scanning. */
   backgroundColor?: string;
 };
 
@@ -15,7 +15,7 @@ export function QRCode({
   value,
   size = 220,
   color = colors.ink,
-  backgroundColor = colors.sandLight,
+  backgroundColor = '#FFFFFF',
 }: Props) {
   return (
     <View style={[styles.frame, { backgroundColor }]}>

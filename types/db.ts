@@ -43,6 +43,9 @@ export interface Profile {
   notification_prefs: NotificationPrefs;
   privacy_prefs: PrivacyPrefs;
   expo_push_token: string | null;
+  base_paid_until: string | null;
+  marketplace_addon_until: string | null;
+  season_pass_until: string | null;
   created_at: string;
   updated_at: string;
 }

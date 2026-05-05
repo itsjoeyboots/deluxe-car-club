@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { colors, fonts, radii } from '@/lib/theme';
+import { deriveMembershipState, formatUntil } from '@/lib/membership';
 import type { MemberStatus, MemberTier } from '@/types/db';
 
 type AdminMember = {
@@ -27,10 +28,13 @@ type AdminMember = {
   points_balance: number;
   approved_at: string | null;
   paid_since: string | null;
+  base_paid_until: string | null;
+  marketplace_addon_until: string | null;
+  season_pass_until: string | null;
 };
 
 type StatusFilter = 'all' | MemberStatus;
-type TierFilter = 'all' | MemberTier;
+type AddonFilter = 'all' | 'base' | 'marketplace' | 'season';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -40,11 +44,11 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'rejected', label: 'Rejected' },
 ];
 
-const TIER_FILTERS: { key: TierFilter; label: string }[] = [
-  { key: 'all', label: 'Any tier' },
-  { key: 'none', label: 'None' },
-  { key: 'drivers', label: 'Drivers' },
-  { key: 'collector', label: 'Collector' },
+const ADDON_FILTERS: { key: AddonFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'base', label: 'Has Base' },
+  { key: 'marketplace', label: 'Marketplace' },
+  { key: 'season', label: 'Season Pass' },
 ];
 
 export default function AdminMembersScreen() {
@@ -55,7 +59,7 @@ export default function AdminMembersScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+  const [addonFilter, setAddonFilter] = useState<AddonFilter>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -67,7 +71,7 @@ export default function AdminMembersScreen() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, full_name, email, city, profile_photo_url, app_number, status, tier, role, points_balance, approved_at, paid_since',
+        'id, full_name, email, city, profile_photo_url, app_number, status, tier, role, points_balance, approved_at, paid_since, base_paid_until, marketplace_addon_until, season_pass_until',
       )
       .order('approved_at', { ascending: false, nullsFirst: false });
     if (!error && data) {
@@ -83,7 +87,15 @@ export default function AdminMembersScreen() {
   const filtered = useMemo(() => {
     let out = members;
     if (statusFilter !== 'all') out = out.filter((m) => m.status === statusFilter);
-    if (tierFilter !== 'all') out = out.filter((m) => m.tier === tierFilter);
+    if (addonFilter !== 'all') {
+      out = out.filter((m) => {
+        const ms = deriveMembershipState(m);
+        if (addonFilter === 'base') return ms.hasActiveBase;
+        if (addonFilter === 'marketplace') return ms.hasMarketplaceAddon;
+        if (addonFilter === 'season') return ms.hasSeasonPass;
+        return true;
+      });
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       out = out.filter(
@@ -95,7 +107,7 @@ export default function AdminMembersScreen() {
       );
     }
     return out;
-  }, [members, search, statusFilter, tierFilter]);
+  }, [members, search, statusFilter, addonFilter]);
 
   if (authLoading) {
     return (
@@ -116,22 +128,22 @@ export default function AdminMembersScreen() {
     );
   }
 
-  async function setTier(id: string, tier: MemberTier) {
+  async function setMembership(
+    id: string,
+    kind: 'base' | 'marketplace' | 'season',
+    months: number,
+  ) {
     setBusyId(id);
-    const patch: { tier: MemberTier; status?: MemberStatus; paid_since?: string | null } = {
-      tier,
-    };
-    if (tier === 'none') {
-      patch.paid_since = null;
-    } else {
-      patch.status = 'paid';
-      const target = members.find((m) => m.id === id);
-      if (!target?.paid_since) patch.paid_since = new Date().toISOString();
-    }
-    const { error } = await supabase.from('profiles').update(patch).eq('id', id);
+    const rpc =
+      kind === 'base'
+        ? 'admin_set_base'
+        : kind === 'marketplace'
+          ? 'admin_set_marketplace_addon'
+          : 'admin_set_season_pass';
+    const { error } = await supabase.rpc(rpc, { target: id, months });
     setBusyId(null);
     if (error) {
-      showError('Could not update tier', error.message);
+      showError('Could not update membership', error.message);
       return;
     }
     await refresh();
@@ -195,19 +207,19 @@ export default function AdminMembersScreen() {
           ))}
         </ScrollView>
         <Text variant="caption" tone="muted" style={{ marginTop: 6 }}>
-          TIER
+          MEMBERSHIP
         </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.pillRow}
         >
-          {TIER_FILTERS.map((f) => (
+          {ADDON_FILTERS.map((f) => (
             <FilterPill
               key={f.key}
               label={f.label}
-              active={tierFilter === f.key}
-              onPress={() => setTierFilter(f.key)}
+              active={addonFilter === f.key}
+              onPress={() => setAddonFilter(f.key)}
             />
           ))}
         </ScrollView>
@@ -231,7 +243,7 @@ export default function AdminMembersScreen() {
               key={m.id}
               member={m}
               busy={busyId === m.id}
-              onSetTier={(t) => setTier(m.id, t)}
+              onSetMembership={(kind, months) => setMembership(m.id, kind, months)}
               onSetStatus={(s) => setStatus(m.id, s)}
             />
           ))}
@@ -244,18 +256,22 @@ export default function AdminMembersScreen() {
 function MemberAdminCard({
   member,
   busy,
-  onSetTier,
+  onSetMembership,
   onSetStatus,
 }: {
   member: AdminMember;
   busy: boolean;
-  onSetTier: (tier: MemberTier) => void;
+  onSetMembership: (
+    kind: 'base' | 'marketplace' | 'season',
+    months: number,
+  ) => void;
   onSetStatus: (status: MemberStatus) => void;
 }) {
   const number = member.app_number
     ? `#${String(member.app_number).padStart(3, '0')}`
     : null;
   const isSuspended = member.status === 'rejected';
+  const ms = deriveMembershipState(member);
 
   return (
     <Card variant="raised">
@@ -293,7 +309,21 @@ function MemberAdminCard({
           ) : null}
           <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
             <StatusPill status={member.status} />
-            <TierPill tier={member.tier} />
+            {ms.hasActiveBase ? (
+              <View style={[styles.miniPill, { backgroundColor: colors.terracotta }]}>
+                <Text style={[styles.miniPillText, { color: colors.ink }]}>BASE</Text>
+              </View>
+            ) : null}
+            {ms.hasMarketplaceAddon ? (
+              <View style={[styles.miniPill, { backgroundColor: colors.gold }]}>
+                <Text style={[styles.miniPillText, { color: colors.ink }]}>MARKET</Text>
+              </View>
+            ) : null}
+            {ms.hasSeasonPass ? (
+              <View style={[styles.miniPill, { backgroundColor: colors.goldBright }]}>
+                <Text style={[styles.miniPillText, { color: colors.ink }]}>SEASON</Text>
+              </View>
+            ) : null}
             <View style={[styles.miniPill, { backgroundColor: colors.inkMuted }]}>
               <Text style={styles.miniPillText}>{member.points_balance.toLocaleString()} PTS</Text>
             </View>
@@ -303,21 +333,36 @@ function MemberAdminCard({
 
       <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 14 }} />
 
-      <Text variant="caption" tone="muted">
-        SET TIER
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-        {(['none', 'drivers', 'collector'] as MemberTier[]).map((t) => (
-          <Button
-            key={t}
-            label={t === 'none' ? 'No tier' : t === 'drivers' ? 'Drivers' : 'Collector'}
-            size="sm"
-            variant={member.tier === t ? 'primary' : 'secondary'}
-            onPress={() => onSetTier(t)}
-            disabled={busy}
-          />
-        ))}
-      </View>
+      <MembershipControl
+        label="Base Membership"
+        priceLine="$100/yr"
+        active={ms.hasActiveBase}
+        until={ms.basePaidUntil}
+        unit="yr"
+        busy={busy}
+        onGrant={() => onSetMembership('base', 12)}
+        onRevoke={() => onSetMembership('base', 0)}
+      />
+      <MembershipControl
+        label="Marketplace Add-on"
+        priceLine="$500/yr"
+        active={ms.hasMarketplaceAddon}
+        until={ms.marketplaceAddonUntil}
+        unit="yr"
+        busy={busy}
+        onGrant={() => onSetMembership('marketplace', 12)}
+        onRevoke={() => onSetMembership('marketplace', 0)}
+      />
+      <MembershipControl
+        label="Season Pass"
+        priceLine="$200/mo"
+        active={ms.hasSeasonPass}
+        until={ms.seasonPassUntil}
+        unit="mo"
+        busy={busy}
+        onGrant={() => onSetMembership('season', 1)}
+        onRevoke={() => onSetMembership('season', 0)}
+      />
 
       <Text variant="caption" tone="muted" style={{ marginTop: 12 }}>
         STATUS
@@ -354,6 +399,67 @@ function MemberAdminCard({
         />
       </View>
     </Card>
+  );
+}
+
+function MembershipControl({
+  label,
+  priceLine,
+  active,
+  until,
+  unit,
+  busy,
+  onGrant,
+  onRevoke,
+}: {
+  label: string;
+  priceLine: string;
+  active: boolean;
+  until: string | null;
+  unit: 'yr' | 'mo';
+  busy: boolean;
+  onGrant: () => void;
+  onRevoke: () => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 6,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyBold" numberOfLines={1}>
+          {label}
+        </Text>
+        <Text variant="caption" tone="muted" numberOfLines={1}>
+          {priceLine}
+          {active && until
+            ? ` · until ${formatUntil(until)}`
+            : active
+              ? ' · active'
+              : ' · inactive'}
+        </Text>
+      </View>
+      <Button
+        label={active ? `+1${unit}` : `Grant 1${unit}`}
+        size="sm"
+        variant={active ? 'secondary' : 'primary'}
+        onPress={onGrant}
+        disabled={busy}
+      />
+      {active ? (
+        <Button
+          label="Revoke"
+          size="sm"
+          variant="danger"
+          onPress={onRevoke}
+          disabled={busy}
+        />
+      ) : null}
+    </View>
   );
 }
 
@@ -405,23 +511,6 @@ function StatusPill({ status }: { status: MemberStatus }) {
   return (
     <View style={[styles.miniPill, { backgroundColor: p.bg }]}>
       <Text style={[styles.miniPillText, { color: p.fg }]}>{status.toUpperCase()}</Text>
-    </View>
-  );
-}
-
-function TierPill({ tier }: { tier: MemberTier }) {
-  if (tier === 'none') {
-    return (
-      <View style={[styles.miniPill, { backgroundColor: colors.inkMuted }]}>
-        <Text style={styles.miniPillText}>NO TIER</Text>
-      </View>
-    );
-  }
-  const bg = tier === 'collector' ? colors.gold : colors.terracottaDeep;
-  const fg = tier === 'collector' ? colors.ink : colors.textOnDark;
-  return (
-    <View style={[styles.miniPill, { backgroundColor: bg }]}>
-      <Text style={[styles.miniPillText, { color: fg }]}>{tier.toUpperCase()}</Text>
     </View>
   );
 }

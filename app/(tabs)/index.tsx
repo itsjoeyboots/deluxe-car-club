@@ -8,7 +8,8 @@ import {
   Button,
   Card,
   Divider,
-  EventCard,
+  EventListItem,
+  MembershipStatus,
   PointsChip,
   ProgressBar,
   ScarcityCounter,
@@ -237,36 +238,21 @@ export default function HomeScreen() {
         />
       </View>
 
-      {tier === 'guest' || tier === 'pending' ? (
-        <Card>
-          <Text variant="eyebrow" tone="terracotta">
-            {tier === 'pending' ? 'Application In Review' : 'Not yet a member'}
-          </Text>
-          <Text variant="h2" style={{ marginTop: 6 }}>
-            {tier === 'pending'
-              ? 'We’re reading your application.'
-              : 'Apply to get in.'}
-          </Text>
-          <Text variant="small" tone="muted" style={{ marginTop: 6 }}>
-            {tier === 'pending'
-              ? 'Founders review every application by hand. We’ll email you the moment a decision is made.'
-              : `One-time $${MEMBERSHIP.applicationFeeUsd} application fee, non-refundable. Covers your welcome kit and review.`}
-          </Text>
-          {tier === 'guest' ? (
-            <Button
-              label="Start Application"
-              size="md"
-              fullWidth
-              style={{ marginTop: 14 }}
-              onPress={() => router.push('/apply')}
-            />
-          ) : null}
-        </Card>
-      ) : null}
+      <MembershipStatus profile={profile} variant="compact" />
 
       <Divider tone="gold" />
 
-      <Section title="Upcoming Events">
+      <Section
+        title="Upcoming Events"
+        action={
+          upcomingEvents.length > 3
+            ? {
+                label: 'See all',
+                onPress: () => router.push('/(tabs)/events'),
+              }
+            : undefined
+        }
+      >
         {upcomingEvents.length === 0 ? (
           <Card variant="inset">
             <Text variant="small" tone="muted">
@@ -275,9 +261,9 @@ export default function HomeScreen() {
             </Text>
           </Card>
         ) : (
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: 8 }}>
             {upcomingEvents.slice(0, 3).map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventListItem key={event.id} event={event} />
             ))}
           </View>
         )}
@@ -337,16 +323,33 @@ export default function HomeScreen() {
 
 function Section({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: { label: string; onPress: () => void };
   children: React.ReactNode;
 }) {
   return (
     <View style={{ gap: 10 }}>
-      <Text variant="h3" tone="primary">
-        {title}
-      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <Text variant="h3" tone="primary">
+          {title}
+        </Text>
+        {action ? (
+          <Pressable onPress={action.onPress}>
+            <Text variant="caption" tone="terracotta">
+              {action.label.toUpperCase()} ›
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       {children}
     </View>
   );

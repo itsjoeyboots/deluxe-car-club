@@ -24,13 +24,13 @@ const AUDIENCES: { key: Audience; label: string; hint: string }[] = [
   },
   {
     key: 'drivers_plus',
-    label: 'Drivers+',
-    hint: 'Drivers and Collector tiers.',
+    label: 'Paid base',
+    hint: 'Members with active base membership.',
   },
   {
     key: 'collector',
-    label: 'Collector only',
-    hint: 'Top-tier members only.',
+    label: 'Season Pass',
+    hint: 'Season Pass holders only.',
   },
   {
     key: 'one',

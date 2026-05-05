@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import {
   Button,
@@ -9,15 +10,15 @@ import {
 import { colors } from '@/lib/theme';
 import { MEMBERSHIP } from '@/lib/membership';
 
+const logo = require('@/assets/images/dcc-logo.jpg');
+
 export default function WelcomeScreen() {
   return (
     <Screen contentContainerStyle={styles.content}>
       <View style={styles.hero}>
-        <Text variant="eyebrow" tone="terracotta">
+        <Image source={logo} style={styles.logo} contentFit="contain" />
+        <Text variant="eyebrow" tone="terracotta" style={{ textAlign: 'center' }}>
           Luxury · Community · Excellence
-        </Text>
-        <Text variant="displayLg" tone="terracotta" style={styles.headline}>
-          Deluxe{'\n'}Car{'\n'}Club
         </Text>
         <Text variant="body" tone="secondary" style={styles.tagline}>
           A members-only automotive lifestyle club. Curated meets, partner
@@ -27,13 +28,16 @@ export default function WelcomeScreen() {
 
       <View style={styles.scarcity}>
         <Text variant="eyebrow" tone="muted">
-          Strict caps · No gatekeeping
+          How it works
         </Text>
         <Text variant="h2" style={{ marginTop: 6 }}>
-          {MEMBERSHIP.approvedCap} approved · {MEMBERSHIP.paidCap} paid spots.
+          Free to apply · ${MEMBERSHIP.base.annual}/yr after acceptance
         </Text>
         <Text variant="small" tone="muted" style={{ marginTop: 6 }}>
-          When someone steps out, the next on the waitlist is in.
+          Add the Marketplace (${MEMBERSHIP.marketplaceAddon.annual}/yr) for
+          partner shop discounts. Add the Season Pass ($
+          {MEMBERSHIP.seasonPass.monthly}/mo) for full access to every event.
+          Cap is {MEMBERSHIP.approvedCap} approved members.
         </Text>
       </View>
 
@@ -58,7 +62,7 @@ export default function WelcomeScreen() {
 
       <View style={styles.footer}>
         <Text variant="caption" tone="muted">
-          Application is ${MEMBERSHIP.applicationFeeUsd}, one-time, non-refundable.
+          Application is free. Founders review every applicant by hand.
         </Text>
         <Link href="/(auth)/sign-in" asChild>
           <Text variant="caption" style={{ color: colors.terracottaDeep, marginTop: 4 }}>
@@ -76,14 +80,19 @@ const styles = StyleSheet.create({
     gap: 28,
   },
   hero: {
+    alignItems: 'center',
     gap: 12,
   },
-  headline: {
-    marginTop: 4,
+  logo: {
+    width: 200,
+    height: 200,
+    borderRadius: 24,
+    marginBottom: 4,
   },
   tagline: {
     marginTop: 8,
     maxWidth: 360,
+    textAlign: 'center',
   },
   scarcity: {
     backgroundColor: colors.surfaceRaised,

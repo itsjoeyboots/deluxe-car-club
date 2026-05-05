@@ -4,7 +4,7 @@
     "slug": "dsc-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/dcc-logo.jpg",
     "scheme": "dscapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,15 +23,15 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/dcc-logo.jpg"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/dcc-logo.jpg",
+          "imageWidth": 220,
           "resizeMode": "contain",
           "backgroundColor": "#0B0B0D",
           "dark": {

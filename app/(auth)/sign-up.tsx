@@ -53,9 +53,9 @@ export default function SignUpScreen() {
             Start your application.
           </Text>
           <Text variant="small" tone="muted" style={{ marginTop: 8 }}>
-            We’ll create your account first. You’ll fill out your application
-            details and pay the ${MEMBERSHIP.applicationFeeUsd} fee on the next
-            screen — only {MEMBERSHIP.approvedCap} approved spots exist.
+            We{'’'}ll create your account first, then walk you through the
+            application. It{'’'}s free to apply. Only{' '}
+            {MEMBERSHIP.approvedCap} approved spots exist.
           </Text>
         </View>
 

@@ -19,7 +19,6 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { MEMBERSHIP } from '@/lib/membership';
-import { startApplicationCheckout, isStripeConfigured } from '@/lib/stripe';
 import { colors, fonts } from '@/lib/theme';
 
 const STEPS = [
@@ -27,7 +26,7 @@ const STEPS = [
   { key: 'personal', title: 'About You' },
   { key: 'car', title: 'Your Car' },
   { key: 'motivation', title: 'Why DCC' },
-  { key: 'review', title: 'Review & Pay' },
+  { key: 'review', title: 'Review' },
 ] as const;
 
 type StepKey = (typeof STEPS)[number]['key'];
@@ -126,7 +125,7 @@ export default function ApplyScreen() {
         .eq('id', userId);
       if (pErr) throw new Error(`Profile: ${pErr.message}`);
 
-      // 2. Create the application row.
+      // 2. Create the application row. No payment — application is free now.
       const primaryCar = `${year.trim()} ${make.trim()} ${model.trim()}`;
       const { data: appRow, error: aErr } = await supabase
         .from('applications')
@@ -137,26 +136,12 @@ export default function ApplyScreen() {
           heard_via: heardVia.trim() || null,
           notes: referrer.trim() ? `Referrer: ${referrer.trim()}` : null,
           status: 'pending',
-          payment_status: 'pending',
+          payment_status: 'paid',
         })
         .select('id')
         .single();
       if (aErr || !appRow) throw new Error(`Application: ${aErr?.message ?? 'no row'}`);
-
-      // 3. Kick off payment (real Stripe or dev-skip).
-      const result = await startApplicationCheckout({
-        applicationId: appRow.id,
-        userId,
-        email: session?.user.email,
-      });
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
       await refreshProfile();
-      if (result.mode === 'stripe') {
-        // The redirect happened; nothing else for us to do here.
-        return;
-      }
       router.replace(`/apply/confirmation?app=${appRow.id}`);
     } catch (err) {
       console.error('[apply] submit failed', err);
@@ -249,13 +234,7 @@ export default function ApplyScreen() {
         <View style={{ gap: 10 }}>
           {step === 'review' ? (
             <Button
-              label={
-                submitting
-                  ? 'Submitting…'
-                  : isStripeConfigured
-                    ? `Pay $${MEMBERSHIP.applicationFeeUsd} & Submit`
-                    : `Submit (dev-skip — no Stripe configured)`
-              }
+              label={submitting ? 'Submitting…' : 'Submit Application'}
               size="lg"
               fullWidth
               loading={submitting}
@@ -283,21 +262,26 @@ function IntroStep() {
         <Text variant="eyebrow" tone="terracotta">
           The basics
         </Text>
-        <Bullet>
-          One-time, non-refundable fee: ${MEMBERSHIP.applicationFeeUsd}
-        </Bullet>
+        <Bullet>Application is free</Bullet>
         <Bullet>Founders review every application by hand</Bullet>
-        <Bullet>If approved, you join the waitlist for paid tiers</Bullet>
+        <Bullet>
+          If approved, base membership is ${MEMBERSHIP.base.annual}/yr
+        </Bullet>
+        <Bullet>
+          Optional add-ons: Marketplace (${MEMBERSHIP.marketplaceAddon.annual}/yr) ·
+          Season Pass (${MEMBERSHIP.seasonPass.monthly}/mo)
+        </Bullet>
         <Bullet>
           Cap is {MEMBERSHIP.approvedCap} approved applicants total
         </Bullet>
       </Card>
       <Card>
-        <Text variant="bodyBold">What the fee covers</Text>
+        <Text variant="bodyBold">What happens next</Text>
         <Text variant="small" tone="muted" style={{ marginTop: 6 }}>
-          Your welcome kit (decals, card, member sticker pack), processing,
-          and the time it takes to read your application thoughtfully. It is
-          not a subscription — paid tiers are separate.
+          You{'’'}ll get an email when a founder reviews your application.
+          Once approved, you can activate your $
+          {MEMBERSHIP.base.annual}/yr base membership and add the
+          Marketplace or Season Pass add-ons whenever you want.
         </Text>
       </Card>
     </View>
@@ -475,8 +459,9 @@ function ReviewStep(props: {
         ) : null}
       </Card>
       <Text variant="caption" tone="muted">
-        By submitting, you agree the ${MEMBERSHIP.applicationFeeUsd} fee is
-        non-refundable and that founders review applications at their own pace.
+        By submitting, you understand that founders review applications at
+        their own pace. Approval is required before activating your base
+        membership.
       </Text>
     </View>
   );
