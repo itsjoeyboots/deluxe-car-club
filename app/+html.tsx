@@ -44,11 +44,36 @@ export default function Root({ children }: PropsWithChildren) {
         <meta property="og:type" content="website" />
 
         <ScrollViewStyleReset />
-        {/* Force a dark page background while the bundle boots */}
+        {/* Force a dark page background while the bundle boots, and patch
+            the iOS home-indicator gap below the tab bar in PWA standalone
+            mode by extending the tab bar's background into the safe area. */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
               html, body, #root { background-color: #0B0B0D; color-scheme: dark; }
+              /* React Navigation web tab bar uses role="tablist". On iOS PWA
+                 standalone, viewport-fit=cover means the home-indicator strip
+                 is part of the page; matching the tab bar's background to that
+                 area + bumping its height so labels stay above the indicator. */
+              [role="tablist"] {
+                padding-bottom: env(safe-area-inset-bottom) !important;
+                height: calc(64px + env(safe-area-inset-bottom)) !important;
+                background-color: #13131A !important;
+              }
+              /* Belt-and-suspenders: a fixed strip behind the tab bar so the
+                 safe area always shows tab-bar surface color, even if React
+                 Navigation re-renders the tab bar without the role above. */
+              body::after {
+                content: '';
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: env(safe-area-inset-bottom);
+                background-color: #13131A;
+                pointer-events: none;
+                z-index: 0;
+              }
             `,
           }}
         />
