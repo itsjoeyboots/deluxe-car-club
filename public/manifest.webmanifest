@@ -1,0 +1,19 @@
+{
+  "name": "Deluxe Car Club",
+  "short_name": "DCC",
+  "description": "Members-only automotive lifestyle club. Curated meets, partner shop discounts, and a community of builders, drivers, and collectors.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0B0D",
+  "theme_color": "#0B0B0D",
+  "icons": [
+    {
+      "src": "/dcc-logo.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

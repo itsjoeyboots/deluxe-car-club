@@ -23,7 +23,16 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/dcc-logo.jpg"
+      "favicon": "./assets/images/dcc-logo.jpg",
+      "themeColor": "#0B0B0D",
+      "name": "Deluxe Car Club",
+      "shortName": "DCC",
+      "lang": "en",
+      "scope": "/",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait",
+      "backgroundColor": "#0B0B0D"
     },
     "plugins": [
       "expo-router",
