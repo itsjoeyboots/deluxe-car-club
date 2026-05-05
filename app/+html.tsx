@@ -55,6 +55,7 @@ export default function Root({ children }: PropsWithChildren) {
                  standalone, viewport-fit=cover means the home-indicator strip
                  is part of the page; matching the tab bar's background to that
                  area + bumping its height so labels stay above the indicator. */
+              /* TODO: still leaves a small gap on iOS PWA — see NEXT-SESSION.md */
               [role="tablist"] {
                 padding-bottom: env(safe-area-inset-bottom) !important;
                 height: calc(64px + env(safe-area-inset-bottom)) !important;
