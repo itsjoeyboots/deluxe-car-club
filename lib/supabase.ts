@@ -19,13 +19,15 @@ const extra =
     | { supabaseUrl?: string; supabaseAnonKey?: string }
     | undefined) ?? {};
 
+// Use `||` not `??` so empty strings (which Metro inlines from app.config.js
+// when env vars aren't set on CI) fall through to the fallback constants.
 const rawUrl =
-  extra.supabaseUrl ??
-  process.env.EXPO_PUBLIC_SUPABASE_URL ??
+  extra.supabaseUrl ||
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
   FALLBACK_SUPABASE_URL;
 const rawKey =
-  extra.supabaseAnonKey ??
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+  extra.supabaseAnonKey ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   FALLBACK_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(rawUrl && rawKey);
